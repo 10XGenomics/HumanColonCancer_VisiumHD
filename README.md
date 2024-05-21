@@ -12,6 +12,10 @@ Michelli F. Oliveira, Juan P. Romero, Meii Chung, Stephen Williams, Andrew D. Go
 
 Colorectal cancer (CRC) is the second-deadliest cancer in the world, yet a deeper understanding of spatial patterns of gene expression in the tumor microenvironment (TME) remains elusive. Here, we introduce the Visium HD platform (10x Genomics) and use it to investigate human CRC and normal adjacent mucosal tissues from formalin fixed paraffin embedded (FFPE) samples. The first assay available on Visium HD is a probe-based spatial transcriptomics workflow that was developed to enable whole transcriptome single cell scale analysis. We demonstrate highly refined unsupervised spatial clustering in Visium HD data that aligns with the hallmarks of colon tissue morphology and is notably improved over earlier Visium assays. Using serial sections from the same FFPE blocks we generate a single cell atlas of our samples, then we integrate the data to comprehensively characterize the immune cell types present in the TME, specifically at the tumor periphery. We observed an enrichment of two pro-tumor macrophage subpopulations with differential gene expression profiles that were specifically localized within distinct tumor regions. Further characterization of the T cells present in one of the samples revealed a clonal expansion which we were able to localize in the tissue using in situ gene expression analysis. In situ analysis also allowed us to perform in depth characterization of the microenvironment of the clonally expanded T cell population and we identified a third macrophage subpopulation with gene expression profiles consistent with an anti-tumor response. Our study provides a comprehensive map of the cellular composition of the CRC TME and identifies phenotypically and spatially distinct immune cell populations within it. We show that the single cell-scale resolution afforded by Visium HD and the whole transcriptome nature of the assay allows investigations into cellular function and interaction at the tumor periphery in FFPE tissues, which has not been previously possible.
 
+## Data
+
+The full dataset used in this repository and in the manuscript can be downloaded from the following link [Dataset](https://www.10xgenomics.com/datasets?query=&page=1&configure%5BhitsPerPage%5D=50&configure%5BmaxValuesPerFacet%5D=1000)
+
 ## Repository
 
 This repository contains the scripts to replicate the findings displayed in the manuscript. It is organized into two folders *Figures* and *Methods*. The *Figures* folder has the scripts to replicate the figures in the manuscript and the files are named accordingly. The *methods* folder contains the different custom methods developed for the manuscript.
@@ -33,7 +37,7 @@ R script with multiple custom R functions used in the manuscript. To load all th
 ### FlexSingleCell.R
 R script used to process the FLEX single cell data. It takes the outputs from [*cellranger aggr*](https://www.10xgenomics.com/support/software/cell-ranger/latest/analysis/running-pipelines/cr-3p-aggr).
 
-Given the dataset's large size, we adopted the sketch-based analysis approach in Seurat<sup>1</sup> v5 [sketched-based analysis](https://satijalab.org/seurat/articles/seurat5_sketch_analysis)], sampling 15% of the entire dataset (~37,000 cells) for downstream analysis. After completing the analysis on the subsampled data, we extended it to the entire single cell dataset.
+Given the dataset's large size, we adopted the sketch-based analysis approach in Seurat<sup>1</sup> v5 [sketched-based analysis](https://satijalab.org/seurat/articles/seurat5_sketch_analysis), sampling 15% of the entire dataset (~37,000 cells) for downstream analysis. After completing the analysis on the subsampled data, we extended it to the entire single cell dataset.
 
 The script saves the full processed Seurat object and the Metadata for plotting purposes in the Figure scripts.
 
