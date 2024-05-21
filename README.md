@@ -59,7 +59,7 @@ In the script we use sample P1CRC as a template to run the algorithm, but it can
 Python script used to run nuclei segmentation on H&E images used for the tissue sections processed with Visium HD.
 To create the the conda environemnt please see [yml section](#ymlfile)
 
-The script takes an HE image as an imput and performs nuclei segmentation on the full section using the [stardist]<sup>3</sup>(https://github.com/stardist/stardist) package. The user can provide a set of coordinates to generate a crop of the image along with the corresponding masks located within that region. The user also provides the path to the outputs directory for a given bin size (i.e. 2µm) and will output a .csv file that assigns all the barcodes located within the all segmentation masks.
+The script takes an HE image as an imput and performs nuclei segmentation on the full section using the [stardist](https://github.com/stardist/stardist)<sup>3</sup> package. The user can provide a set of coordinates to generate a crop of the image along with the corresponding masks located within that region. The user also provides the path to the outputs directory for a given bin size (i.e. 2µm) and will output a .csv file that assigns all the barcodes located within the all segmentation masks.
 
 The script can be called as follows:
 
