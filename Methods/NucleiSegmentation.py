@@ -80,11 +80,11 @@ def main(args):
     gdf["id"] = [f"ID_{i+1}" for i, _ in enumerate(gdf.index)]
 
     # Load Visium HD data
-    raw_h5_file = args.xenadir + "/filtered_feature_bc_matrix.h5"
+    raw_h5_file = args.srdir + "/filtered_feature_bc_matrix.h5"
     adata = sc.read_10x_h5(raw_h5_file)
 
     # Load the Spatial Coordinates
-    tissue_position_file = args.xenadir + "/spatial/tissue_positions.parquet"
+    tissue_position_file = args.srdir + "/spatial/tissue_positions.parquet"
     df_tissue_positions = pd.read_parquet(tissue_position_file)
     # Set the index of the dataframe to the barcodes
     df_tissue_positions = df_tissue_positions.set_index("barcode")
@@ -125,7 +125,7 @@ if __name__ == "__main__":
     parser.add_argument('-r2','--rmax', type=int, help='row max')
     parser.add_argument('-c1','--cmin', type=int, help='column min')
     parser.add_argument('-c2','--cmax', type=int, help='column max')
-    parser.add_argument('-x','--xenadir', type=str, help='Path to spaceranger outs')
+    parser.add_argument('-s','--srdir', type=str, help='Path to spaceranger outs')
     parser.add_argument('-o',"--out", type=str,help="Path to output directory")
     args = parser.parse_args()
     main(args)
