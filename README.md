@@ -1,4 +1,4 @@
-# ![HD Image](https://cdn.10xgenomics.com/image/upload/f_auto,q_auto,w_1500,dpr_2.0/v1711390015/products/Visium%20HD/visium_hd_hero.png)
+# ![HD Image](https://img.freepik.com/free-vector/illustration-gallery-icon_53876-27002.jpg)
 
 # Characterization of immune cell populations in the tumor microenvironment of colorectal cancer using high definition spatial profiling
 
