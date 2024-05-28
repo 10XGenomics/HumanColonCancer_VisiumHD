@@ -16,6 +16,8 @@ library(pheatmap)
 library(RColorBrewer)
 library(distances)
 library(enrichR)
+library(Matrix)
+library(tiff)
 
 # load aux functions
 source("~/Methods/AuxFunctions.R")

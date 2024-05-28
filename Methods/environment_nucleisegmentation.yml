@@ -1,7 +1,6 @@
 name: stardist-env
 channels:
   - conda-forge
-  - defaults
   - bioconda
 dependencies:
   - _libgcc_mutex=0.1=conda_forge
@@ -439,4 +438,4 @@ dependencies:
   - zlib=1.2.13=hd590300_5
   - zlib-ng=2.0.7=h0b41bf4_0
   - zstd=1.5.5=hfc55251_0
-prefix: /mnt/home/juanpablo.romerorioj/miniconda3/envs/stardist-env
+prefix: ~/miniconda3/envs/stardist-env

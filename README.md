@@ -1,8 +1,10 @@
-# ![HD Image](https://img.freepik.com/free-vector/illustration-gallery-icon_53876-27002.jpg)
+# ![HD Image](ext/Figure_CRC.png)
 
 # Characterization of immune cell populations in the tumor microenvironment of colorectal cancer using high definition spatial profiling
 
-Michelli F. Oliveira, Juan P. Romero, Meii Chung, Stephen Williams, Andrew D. Gottscho, Anushka Gupta, Sue Pilipauskas, Syrus Mohabbat, Nandhini Raman, David Sukovich, David Patterson, [Visium HD Development Team](Team), Sarah E. B. Taylor<sup>‡</sup>
+Michelli F. Oliveira<sup>†</sup>, Juan P. Romero<sup>†</sup>, Meii Chung<sup>†</sup>, Stephen Williams, Andrew D. Gottscho, Anushka Gupta, Sue Pilipauskas, Syrus Mohabbat, Nandhini Raman, David Sukovich, David Patterson, [Visium HD Development Team](Team), Sarah E. B. Taylor<sup>‡</sup>
+
+<sup>†</sup> These authors contributed equally to this work
 
 <sup>‡</sup> Corresponding author
 
