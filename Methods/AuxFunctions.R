@@ -753,7 +753,7 @@ NucleiSegmentationScript<-function(BarcodeDF,TransformedDF)
              R1=round(min(BarcodeDF$imagerow[match(unique(TransformedDF$Original),BarcodeDF$barcode)])),
              R2=round(max(BarcodeDF$imagerow[match(unique(TransformedDF$Original),BarcodeDF$barcode)])))
   
-  Script<-paste0(" ./MapBinsToNuclei.py -i PATH/image.btf -r1 ",Rx$R1," -r2 ",Rx$R2," -c1 ",Rx$C1," -c2 ",Rx$C2," -x /PATH/TO/square_00Xum/ -o PATH/TO/OUTPUT")
+  Script<-paste0(" ./NucleiSegmentation.py -i PATH/image.btf -r1 ",Rx$R1," -r2 ",Rx$R2," -c1 ",Rx$C1," -c2 ",Rx$C2," -x /PATH/TO/square_00Xum/ -o PATH/TO/OUTPUT")
   
   message(Script)
 }
