@@ -6,23 +6,25 @@
 ## Load required Packages
 library(Seurat)
 library(Azimuth)
+library(BPCells)
 
 # Load Auxiliary Functions
 source("~/Sections/AuxFunctions.R")
 
 # Read Aggr'd dataset as a Seurat V5 object
 FlexOutPath <- "~/AggrOutput/outs" # Path to cellranger aggr output folder
-ColonFlex.data <- open_matrix_10x_hdf5(path = paste0(FlexOutPath,"filtered_feature_bc_matrix.h5")) 
+ColonFlex.data <- open_matrix_10x_hdf5(path = paste0(FlexOutPath,"/count/filtered_feature_bc_matrix.h5")) 
 write_matrix_dir(mat = ColonFlex.data,dir = '~/Outputs/FlexSeurat/') 
 Flex.mat <- open_matrix_dir(dir = "~/Outputs/FlexSeurat/")
 Flex.mat <- ConvertEnsembleToSymbol(mat = Flex.mat, species = "human") 
 
 # Read aggregation_csv.csv file to be used as MetaData ( Patient, etc)
 MetaData<-read.csv(paste0(FlexOutPath,"aggregation_csv.csv"))
-MetaData$Patient<-sapply(strsplit(MetaData$library_id,"_"),function(X){return(X[4])})
-MetaData$BC<-sapply(strsplit(MetaData$library_id,"_"),function(X){return(X[5])})
+MetaData$Patient<-sapply(strsplit(MetaData$sample_id,"_"),function(X){return(X[6])})
+MetaData$BC<-sapply(strsplit(MetaData$sample_id,"_"),function(X){return(X[7])})
+MetaData$Condition<-gsub("P[0-9]","",MetaData$Patient)
 Index<-as.numeric(sapply(strsplit(colnames(Flex.mat),"-"),function(X){return(X[2])}))
-MetaData<-MetaData[Index,4:5]
+MetaData<-MetaData[Index,3:4]
 MetaData$Barcode<-colnames(Flex.mat)
 rownames(MetaData)<-MetaData$Barcode
 
@@ -44,7 +46,7 @@ UMI_TH<-quantile(ColonCancer_Flex$nCount_RNA,c(0.025,0.975))
 Gene_TH<-quantile(ColonCancer_Flex$nFeature_RNA,c(0.025,0.975))
 
 # Add variable with QC filter status
-ColonCancer_Flex$QCFilter<-ifelse(ColonCancer_Flex$MT.percent < 0.25 & 
+ColonCancer_Flex$QCFilter<-ifelse(ColonCancer_Flex$MT.percent < 25 & 
                                     ColonCancer_Flex$nCount_RNA > UMI_TH[1] & ColonCancer_Flex$nCount_RNA < UMI_TH[2] & 
                                     ColonCancer_Flex$nFeature_RNA > Gene_TH[1] & ColonCancer_Flex$nFeature_RNA < Gene_TH[2],"Keep","Remove")
 
