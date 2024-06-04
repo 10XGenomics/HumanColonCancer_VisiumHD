@@ -16,7 +16,7 @@ Colorectal cancer (CRC) is the second-deadliest cancer in the world, yet a deepe
 
 ## Data
 
-The full dataset used in this repository and in the manuscript can be downloaded from the following link [Dataset](https://www.10xgenomics.com/datasets?query=&page=1&configure%5BhitsPerPage%5D=50&configure%5BmaxValuesPerFacet%5D=1000)
+The full dataset used in this repository and in the manuscript can be downloaded from the following link [Dataset](https://www.10xgenomics.com/products/visium-hd-spatial-gene-expression/dataset-human-crc)
 
 ## Repository
 
@@ -52,7 +52,7 @@ saveRDS(ColonCancer_Flex@meta.data,file='~/Outputs/Flex/FlexSeuratV5_MetaData.rd
 
 R script used to run [spaceXR](https://github.com/dmcable/spacexr)<sup>2</sup> for deconvolution. It requires the UMI count matrix from [*cellranger aggr*](https://www.10xgenomics.com/support/software/cell-ranger/latest/analysis/running-pipelines/cr-3p-aggr) and the **MetaData** generated with the `FlexSingleCell.R`  script to generate the reference. For Visium HD the [Space Ranger](https://www.10xgenomics.com/support/software/space-ranger/latest) outs are also required.
 
-Due to the number of barcodes in Visium HD, we modified the source code of [spaceXR](https://github.com/dmcable/spacexr/pull/206) to improve runtime. The modified version can be found in the following [Pull Request](https://github.com/dmcable/spacexr/pulls). However, the original version can also be used to deconvolve the Visium HD data.
+Due to the number of barcodes in Visium HD, we modified the source code of [spaceXR](https://github.com/dmcable/spacexr) to improve runtime. The modified version can be found in the following [Pull Request](https://github.com/dmcable/spacexr/pull/206). However, the original version can also be used to deconvolve the Visium HD data.
 
 In the script we use sample P1CRC as a template to run the algorithm, but it can also be used for any other sample.
 
