@@ -124,6 +124,11 @@ library(arrow)
 library(pheatmap)
 library(RColorBrewer)
 library(distances)
+library(rhdf5)
+library(glue)
+library(Matrix)
+library(ggpubr)
+library(ggeasy)
 ```
 
 The beginning of each file starts with a data.frame that can be used as a template to generate the output for the different sections. We use P1CRC as a template, but can be replaced with any other section.
