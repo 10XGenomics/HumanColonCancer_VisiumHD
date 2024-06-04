@@ -70,7 +70,7 @@ per_probe_counts_unfiltered <- map(.x = per_probe_matrix, ~per_probe_sums(.x)) %
 # Only spliced probes
 ## Only need to pull in one file since they all use the same one
 ## Available from https://www.10xgenomics.com/support/software/space-ranger/downloads
-target_panel_path <- "/Path/to/Visium_Human_Transcriptome_Probe_Set_v2.0_GRCh38-2020-A.csv"
+target_panel_path <- "https://cf.10xgenomics.com/supp/spatial-exp/probeset/Visium_Human_Transcriptome_Probe_Set_v2.0_GRCh38-2020-A.csv"
 target_panel <- fread(target_panel_path)
 
 spliced_probes <- target_panel %>% 
