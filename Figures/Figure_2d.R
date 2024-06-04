@@ -13,8 +13,8 @@ library(ggeasy)
 ## Set samples names
 sample_names <- c("Visium_HD", "Visium_v2")
 
-sample_base_paths <- list(hd_base_path = "/mnt/deck/1/stephen.williams/HD_Manuscript/Visium_HD_Human_Colon_Normal_P3/binned_outputs/square_002um/",
-                          v2_base_path = "/mnt/deck/1/stephen.williams/HD_Manuscript/Visium_V2_Human_Colon_Normal_P3/")
+sample_base_paths <- list(hd_base_path = "/path/to/Visium_HD_Human_Colon_Normal_P3/binned_outputs/square_002um/",
+                          v2_base_path = "/path/to/HD_Manuscript/Visium_V2_Human_Colon_Normal_P3/")
 
 # Identify the paths for each raw_probe_bc_matrix.h5
 per_probe_paths <- list()
