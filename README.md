@@ -52,7 +52,7 @@ saveRDS(ColonCancer_Flex@meta.data,file='~/Outputs/Flex/FlexSeuratV5_MetaData.rd
 
 R script used to run [spaceXR](https://github.com/dmcable/spacexr)<sup>2</sup> for deconvolution. It requires the UMI count matrix from [*cellranger aggr*](https://www.10xgenomics.com/support/software/cell-ranger/latest/analysis/running-pipelines/cr-3p-aggr) and the **MetaData** generated with the `FlexSingleCell.R`  script to generate the reference. For Visium HD the [Space Ranger](https://www.10xgenomics.com/support/software/space-ranger/latest) outs are also required.
 
-Due to the number of barcodes in Visium HD, we modified the source code of [spaceXR](https://github.com/dmcable/spacexr) to improve runtime. The modified version can be found in the following [Pull Request](https://github.com/dmcable/spacexr/pulls). However, the original version can also be used to deconvolve the Visium HD data.
+Due to the number of barcodes in Visium HD, we modified the source code of [spaceXR](https://github.com/dmcable/spacexr/pull/206) to improve runtime. The modified version can be found in the following [Pull Request](https://github.com/dmcable/spacexr/pulls). However, the original version can also be used to deconvolve the Visium HD data.
 
 In the script we use sample P1CRC as a template to run the algorithm, but it can also be used for any other sample.
 
@@ -124,6 +124,12 @@ library(arrow)
 library(pheatmap)
 library(RColorBrewer)
 library(distances)
+library(rhdf5)
+library(glue)
+library(Matrix)
+library(ggpubr)
+library(ggeasy)
+library(arrow)
 ```
 
 The beginning of each file starts with a data.frame that can be used as a template to generate the output for the different sections. We use P1CRC as a template, but can be replaced with any other section.
