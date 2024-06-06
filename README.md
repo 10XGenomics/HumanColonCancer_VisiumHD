@@ -8,7 +8,7 @@ Michelli F. Oliveira<sup>†</sup>, Juan P. Romero<sup>†</sup>, Meii Chung<sup
 
 <sup>‡</sup> Corresponding author
 
-[LINK TO PAPER](https://www.biorxiv.org/)
+[LINK TO PAPER](https://www.biorxiv.org/content/10.1101/2024.06.04.597233v1)
 
 ## Abstract
 
