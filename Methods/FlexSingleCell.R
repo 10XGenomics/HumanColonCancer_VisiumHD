@@ -144,8 +144,8 @@ ColonCancer_Flex <- Seurat:::ProjectData(
   refdata = list(ProjectAll_L1 = "Level1",ProjectAll_L2 = "Level2")
 )
 
-ColonCancer_Flex$Level1<-factor(ColonCancer_Flex$Level1,levels = sort(unique(ColonCancer_Flex$Level1)))
-ColonCancer_Flex$Level2<-factor(ColonCancer_Flex$Level2,levels = sort(unique(ColonCancer_Flex$Level2)))
+ColonCancer_Flex$Level1<-factor(ColonCancer_Flex$ProjectAll_L1,levels = sort(unique(ColonCancer_Flex$ProjectAll_L1)))
+ColonCancer_Flex$Level2<-factor(ColonCancer_Flex$ProjectAll_L2,levels = sort(unique(ColonCancer_Flex$ProjectAll_L2)))
 
 # Save processed Seurat Object & MetaData
 saveRDS(ColonCancer_Flex,file='~/Outputs/Flex/FlexSeuratV5.rds')
