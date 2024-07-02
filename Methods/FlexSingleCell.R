@@ -72,10 +72,11 @@ Mks<-FindAllMarkers(ColonCancer_Flex,min.diff.pct = 0.2,logfc.threshold = 0.2,on
 Mks<-Mks[Mks$p_val_adj<0.05,]
 
 # Rename Clusters (Manual Annotation)
-NewClusterIDs <- c("Tumor","Smooth Muscle","Tumor","Myeloid","Intestinal Epithelial","Fibroblast","Fibroblast",
-                   "Endothelial","Smooth Muscle","T cells","T cells","B cells","B cells","Fibroblast","Neuronal",
-                   "Intestinal Epithelial","Myeloid","Fibroblast","Mast","Myeloid","Neuronal","Endothelial",
-                   "Tumor","Neuronal","Fibroblast","Intestinal Epithelial")
+NewClusterIDs <- c("Tumor","Smooth Muscle","Tumor","Myeloid","Fibroblast","Fibroblast",
+                   "Intestinal Epithelial","Endothelial","Smooth Muscle","T cells","Intestinal Epithelial",
+                   "B cells","T cells","B cells","Fibroblast","Neuronal","Fibroblast","Myeloid",
+                   "Myeloid","Neuronal","Myeloid","Endothelial","Neuronal","Tumor",
+                   "Intestinal Epithelial","Intestinal Epithelial")
 
 names(NewClusterIDs) <- levels(ColonCancer_Flex)
 
@@ -117,15 +118,13 @@ MetaDataSubClusters<-do.call(rbind,MetaDataSubClusters)
 
 # Rename Clusters
 Level2Clusters<-data.frame(ID=sort(unique(MetaDataSubClusters$Level2)),
-                           Label=c("Plasma","Mature B","vSM","Memory B",
-                                   "Endothelial","Myofibroblast","Lymphatic Endothelial",
-                                   "CAF","Fibroblast","Fibroblast","Pericytes","Myofibroblast","Myofibroblast","Vascular Fibroblast","Proliferating Fibroblast","Adipocyte",
-                                   "Goblet","Enterocyte","Tuft","Macrophage","Mast","Mast",
-                                   "Macrophage","Neutrophil","Proliferating Macrophage","mRegDC","cDC I","pDC",
-                                   "Enteric Glial","vSM","Enteric Glial","Neuroendocrine","Macrophage",
-                                   "Epithelial","SM Stress Response","Smooth Muscle","vSM","Unknown III (SM)",
-                                   "CD4 T cell","CD8 Cytotoxic T cell","NK cell","Unknwon I (Immune)",
-                                   "Tumor I","Tumor II","Tumor III","Tumor IV","Tumor V","Proliferating Immune II"))
+Level2Clusters<-data.frame(ID=sort(unique(MetaDataSubClusters$Level2)),
+                           Label=c("Plasma","Mature B","Plasma","Proliferating Immune II","Endothelial","Endothelial","Lymphatic Endothelial","CAF",
+                                   "Fibroblast","Pericytes","Fibroblast","Myofibroblast","CAF","Myofibroblast","Fibroblast","CAF","Goblet","Enterocyte",
+                                   "Goblet","Tuft","Macrophage","Neutrophil","Mast","Macrophage","Macrophage","mRegDC","pDC","Enteric Glial","Enteric Glial",
+                                   "Neuroendocrine","Enteric Glial","Adipocyte","Epithelial","SM Stress Response","Smooth Muscle","vSM","Unknown III (SM)",
+                                   "SM Stress Response","Adipocyte","CD4 T cell","CD8 Cytotoxic T cell","CD4 T cell","CD8 Cytotoxic T cell",
+                                   "CD4 T cell","Tumor I","Tumor III","Tumor II","Tumor V","Tumor I","Proliferating Immune II"))
 
 MetaDataSubClusters$Level2<-Level2Clusters$Label[match(MetaDataSubClusters$Level2,Level2Clusters$ID)]
 
@@ -145,8 +144,8 @@ ColonCancer_Flex <- Seurat:::ProjectData(
   refdata = list(ProjectAll_L1 = "Level1",ProjectAll_L2 = "Level2")
 )
 
-ColonCancer_Flex$Level1<-factor(ColonCancer_Flex$Level1,levels = sort(unique(ColonCancer_Flex$Level1)))
-ColonCancer_Flex$Level2<-factor(ColonCancer_Flex$Level2,levels = sort(unique(ColonCancer_Flex$Level2)))
+ColonCancer_Flex$Level1<-factor(ColonCancer_Flex$ProjectAll_L1,levels = sort(unique(ColonCancer_Flex$ProjectAll_L1)))
+ColonCancer_Flex$Level2<-factor(ColonCancer_Flex$ProjectAll_L2,levels = sort(unique(ColonCancer_Flex$ProjectAll_L2)))
 
 # Save processed Seurat Object & MetaData
 saveRDS(ColonCancer_Flex,file='~/Outputs/Flex/FlexSeuratV5.rds')
