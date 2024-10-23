@@ -1,5 +1,5 @@
 #### Visium HD Manuscript
-## Figure 5
+## Supplemental Figure 7
 
 # load packages
 library(Seurat)
