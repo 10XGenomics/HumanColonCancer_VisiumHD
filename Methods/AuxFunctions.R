@@ -384,32 +384,19 @@ GetSlice<-function(Spot,SizeMicrons,BarcodeDF,PATH,CellT=NA,size="008um")
 # Function to plot enrichR results as a barplot
 EnrichRBarPlot<-function(Markers,DataBase,TermsX=10,PTh=1e-3,GO=F,colsT=c("firebrick1","dodgerblue"))
 {
-  Cluss<-as.vector(unique(Markers$cluster))
-  NClusters<-length(unique(Markers$cluster))
+
+  Genes<-split(Markers$gene,Markers$cluster)
+  ResA<-enrichr(Genes[[1]],DataBase)[[1]]
+  ResA$Cluster<-names(Genes)[1]
+  ResB<-enrichr(Genes[[2]],DataBase)[[1]]
+  ResB$Cluster<-names(Genes)[2]
   
-  Result<-vector("list",length = NClusters)
-  
-  for(jj in 1:length(Cluss))
-  {
-    
-    Res<-enrichr(Markers[Markers$cluster==Cluss[jj],"gene"],DataBase)
-    
-    if(nrow(Res[[1]])>0)
-    {
-      Result[[jj]]<-cbind(Res[[1]],Cluss[jj])
-    }
-    
-  }
-  
-  Result<-do.call(rbind,Result)
+  Result<-rbind(ResA,ResB)
   
   if(GO)
   {
     Result$Term<-trimws(sapply(strsplit(Result$Term,"[(]"),function(X){return(X[1])}))
   }
-  
-  
-  colnames(Result)[10]<-"Cluster"
   
   Result<-Result[Result$P.value<PTh,]
   
@@ -780,6 +767,275 @@ geom_spatial<-function (mapping = NULL, data = NULL, stat = "identity", position
 # Negate %in% operator
 '%!in%' <- function(x,y)!('%in%'(x,y))
 
-
-
+# Plot C-C Communication 
+PlotInteraction<-function(LianaRes,SourceCTs=NA,TargetCTs=NA,N=2,Gap=5,ColorsUser=NA,scale=FALSE,alpha=0.2)
+{
+  # Define Colors if not given
+  if(all(is.na(ColorsUser)))
+  {
+    ColorsTracks<-paletteer::paletteer_d("ggsci::default_igv")
+  }else{
+    
+    ColorsTracks<-ColorsUser
+  }
   
+  # Generate Frequncy Matrix to be used
+  Freqs<-table(LianaRes$source,LianaRes$target)
+  Freqs<-matrix(Freqs, ncol = ncol(Freqs), dimnames = dimnames(Freqs))
+  
+  # Filter source to the selected cell types if any
+  if(all(!is.na(SourceCTs) & SourceCTs %in% rownames(Freqs)))
+  {
+    Freqs<-Freqs[SourceCTs,,drop=F]
+  }else{
+    
+    SourceCTs<-rownames(Freqs)
+  }
+  
+  # Filter interaction with at least N entries
+  Freqs[Freqs<N]<-0
+  
+  if(all(Freqs==0))
+  {
+    stop("No interactions with given parameters")
+  }
+  
+  # Keep targets with at least 1 interaction
+  Freqs<-Freqs[,colSums(Freqs)>0,drop=F]
+  
+  if(all(Freqs==0))
+  {
+    stop("No interactions with given parameters")
+  }
+  
+  # Order the CTs (source and target)
+  orderTracks <- c(SourceCTs,sort(colnames(Freqs)[colnames(Freqs) %!in% SourceCTs]))
+  
+  # Define Gaps to visualize better source and sinks
+  if(scale)
+  {
+    GapsTracks<-c(rep(5,nrow(Freqs)-1),50,rep(5,(length(orderTracks)-length(SourceCTs))-1),50)
+  }else{
+    GapsTracks<-c(rep(5,nrow(Freqs)-1),20,rep(5,(length(orderTracks)-length(SourceCTs))-1),20)
+  }
+  
+  # Generate Color Matrix
+  
+  ColLinks<-ColorsTracks[match(rownames(Freqs),names(ColorsTracks))]
+  ColsAlpha<-adjustcolor(ColLinks,alpha.f = alpha)
+  ColorMatrix<-matrix(rep(ColsAlpha,each=ncol(Freqs)),nrow=nrow(Freqs),ncol=ncol(Freqs),dimnames = dimnames(Freqs),byrow = T)
+  
+  # Used only if we want to highlight specific relationships
+  if(all(!is.na(TargetCTs)))
+  {
+    RowsH<-expand.grid(SourceCTs,TargetCTs)
+    RowsH$Col<-ColorsTracks[as.vector(RowsH$Var1)]
+    
+    Pos<-cbind(match(RowsH$Var1,rownames(Freqs)),match(RowsH$Var2,colnames(Freqs)))
+    index<-!is.na(Pos[,1]) & !is.na(Pos[,2])
+    Pos<-Pos[index,]
+    RowsH<-RowsH[index,]
+    
+    ColorMatrix[Pos]<-RowsH$Col
+    
+  }
+  
+  circos.par(gap.after = GapsTracks,start.degree = -90)
+  
+  chordDiagram(Freqs, order = orderTracks, annotationTrack = c("grid","name"),grid.col=ColorsTracks,
+               direction.type = c("diffHeight", "arrows"),directional = 1,link.arr.type = "big.arrow",
+               scale=scale,col = ColorMatrix)
+  
+  circos.clear()
+  
+}
+
+## Extra color Palette
+ColorsExtra<-function()
+{
+  Cols<-c("#5580B0","#56BCF9","steelblue","#7F1786","#A5CC4F","#D2A741",
+          "#E087E8","#B6D7E4","#932CE7","darkred", "salmon","#458EF7", 
+          "#5DCBCF","#E8A76C","#A0FBD6","#75FB4C",  "black","#EA8677", 
+          "#965635","#CA3142","#75FB8D","#7869E6","#AFF9A2","#60B177", 
+          "#FEFF54","#808080","#EA33F7","#EA3323","#0C00C5","#377E7F", 
+          "#2A6218","#F09235","#EEE697","#453D86","#CD7693","#74140C", 
+          "#808026","#FAE4C8","#BEFD5B","#D4A2D9","#B72D82","#596A37","#04007B") 
+  
+  names(Cols)<-c('Bcells-0','Bcells-1','Bcells-2','Bcells-3','Bcells-4','Endothelial-0','Endothelial-1','Endothelial-2','Endothelial-3',
+                 'Fibroblast-0','Fibroblast-1','Fibroblast-2','IntestinalEpithelial-0','IntestinalEpithelial-1','IntestinalEpithelial-2',
+                 'IntestinalEpithelial-3','IntestinalEpithelial-4','IntestinalEpithelial-5','Myeloid-0','Myeloid-1','Myeloid-2',
+                 'Neuronal-0','Neuronal-1','SmoothMuscle-0','SmoothMuscle-1','SmoothMuscle-2','SmoothMuscle-3','SmoothMuscle-4',
+                 'Tcells-0','Tcells-1','Tcells-2','Tcells-3','Tumor-0','Tumor-1','Tumor-2','Tumor-3','Unknown-0','Unknown-1',
+                 'Unknown-2','Unknown-3','Unknown-4','Unknown-5','Unknown-6')
+  
+  return(Cols)
+}
+
+EnrichRDotPlot<-function(Markers,Database,TermsX=10,N=5)
+{
+  Cluss<-as.vector(unique(Markers$cluster))
+  ResultTerms<-vector("list",length = length(Cluss))
+  for(jj in 1:length(Cluss))
+  {
+    
+    Res<-enrichr(Markers[Markers$cluster==Cluss[jj],"gene"],Database)
+    RxTmp<-Res[[1]]
+    RxTmp$Cluster<-Cluss[jj]
+    ResultTerms[[jj]]<-RxTmp
+    
+  }
+  
+  ResultTerms<-do.call(rbind,ResultTerms)
+  ResultTerms<-ResultTerms[ResultTerms$P.value<1e-3,]
+  
+  Terms_Result<-ResultTerms %>%  arrange(Adjusted.P.value) %>% group_by(Cluster) %>% slice(1:N) %>% pull(Term)
+  Terms_Result<-unique(Terms_Result)
+  
+  iix<-c()
+  for(jj in 1:length(Terms_Result))
+  {
+    
+    iix<-c(iix,which(ResultTerms[,1]==Terms_Result[jj]))
+    
+  }
+  
+  Terms_Reduced<-ResultTerms[iix,]
+  Terms_Reduced<-Terms_Reduced[!is.na(Terms_Reduced$Term),]
+  Terms_Reduced$Term<-factor(Terms_Reduced$Term,levels = unique(Terms_Reduced$Term))
+  
+  
+  PlotX<-ggplot(Terms_Reduced,aes(x=Cluster,y=Term,colour=-log10(P.value)))+geom_point(aes(size=Odds.Ratio))+scale_color_viridis()+theme_classic()
+  
+  return(PlotX)
+  
+  
+  
+}
+
+# Plot C-C Communication 
+PlotInteractionGraph<-function(LianaRes,CellTypes=NA,Colors=NA,TitlePlot=NULL)
+{
+  # Taken from CellChat [netVisual_circle]
+  # https://github.com/sqjin/CellChat/blob/e4f68625b074247d619c2e488d33970cc531e17c/R/visualization.R#L1240
+  
+  # Parameters
+  vertex.weight <- 10
+  edge.width.max <- 8
+  arrow.width <- 1
+  arrow.size <- 0.6
+  edge.curved <- 0.2
+  shape <- 'circle'
+  
+  
+  # Define Colors if not given
+  if(all(is.na(Colors)))
+  {
+    ColorsTracks<-paletteer::paletteer_d("ggsci::default_igv")
+  }else{
+    
+    ColorsTracks<-Colors
+  }
+  
+  if(all(!is.na(CellTypes)))
+  {
+    LianaRes <- LianaRes %>% filter(source %in% CellTypes & target %in% CellTypes)
+  }
+  
+  NetworkDF<-as.matrix(table(LianaRes$source,LianaRes$target))
+  cells.level <- unique(c(rownames(NetworkDF),colnames(NetworkDF)))
+  df.net <- reshape2::melt(NetworkDF, value.name = "value")
+  colnames(df.net)[1:2] <- c("source","target")
+  
+  df.net$source <- factor(df.net$source, levels = cells.level)
+  df.net$target <- factor(df.net$target, levels = cells.level)
+  df.net$value[is.na(df.net$value)] <- 0
+  
+  NetworkDF <- tapply(df.net[["value"]], list(df.net[["source"]], df.net[["target"]]), sum)
+  
+  NetworkDF[is.na(NetworkDF)] <- 0
+  
+  g <- graph_from_adjacency_matrix(NetworkDF, mode = "directed", weighted = T)
+  
+  edge.start <- igraph::ends(g, es=igraph::E(g), names=FALSE)
+  
+  coords<-layout_(g,in_circle())
+  
+  if(nrow(coords)!=1)
+  {
+    coords_scale=scale(coords)
+    
+  }else{
+    
+    coords_scale<-coords
+  }
+  
+  loop.angle<-ifelse(coords_scale[igraph::V(g),1]>0,-atan(coords_scale[igraph::V(g),2]/coords_scale[igraph::V(g),1]),pi-atan(coords_scale[igraph::V(g),2]/coords_scale[igraph::V(g),1]))
+  igraph::V(g)$size<-vertex.weight
+  igraph::V(g)$color<-ColorsTracks[names(igraph::V(g))]
+  igraph::V(g)$frame.color <- ColorsTracks[names(igraph::V(g))]
+  igraph::V(g)$label.color <- "black"
+  igraph::V(g)$label.cex<-1
+  
+  edge.weight.max <- max(igraph::E(g)$weight)
+  igraph::E(g)$width<- 0.3+igraph::E(g)$weight/edge.weight.max*edge.width.max
+  
+  igraph::E(g)$arrow.width<-arrow.width
+  igraph::E(g)$arrow.size<-arrow.size
+  igraph::E(g)$label.color<-"black"
+  igraph::E(g)$label.cex<-0.8
+  igraph::E(g)$color<- grDevices::adjustcolor(igraph::V(g)$color[edge.start[,1]],0.6)
+  igraph::E(g)$loop.angle <- rep(0, length(igraph::E(g)))
+  
+  if(sum(edge.start[,2]==edge.start[,1])!=0){
+    igraph::E(g)$loop.angle[which(edge.start[,2]==edge.start[,1])]<-loop.angle[edge.start[which(edge.start[,2]==edge.start[,1]),1]]
+  }
+  
+  radian.rescale <- function(x, start=0, direction=1) {
+    c.rotate <- function(x) (x + start) %% (2 * pi) * direction
+    c.rotate(scales::rescale(x, c(0, 2 * pi), range(x)))
+  }
+  
+  label.locs <- radian.rescale(x=1:length(igraph::V(g)), direction=-1, start=0)
+  label.dist <- vertex.weight/max(vertex.weight)+2
+  
+  plot(g,edge.curved=edge.curved,vertex.shape=shape,layout=coords_scale,margin=0.2, vertex.label.dist=label.dist,
+       vertex.label.degree=label.locs, vertex.label.family="Helvetica", edge.label.family="Helvetica") # "sans"
+  
+  if (!is.null(TitlePlot)) {
+    text(0,1.5,title.name, cex = 1.1)
+  }
+  
+  gg <- recordPlot()
+  
+  return(gg)
+}
+
+# Function to calculate Euclidean distance between two RGB colors
+color_distance <- function(color1, color2) {
+  sqrt(sum((color1 - color2)^2))
+}
+
+# Function to get the N most different colors
+most_different_colors <- function(hex_colors, N) {
+  # Convert HEX to RGB
+  rgb_colors <- t(col2rgb(hex_colors))
+  
+  # Initialize the first color as the one farthest from the mean color
+  mean_color <- colMeans(rgb_colors)
+  distances_to_mean <- apply(rgb_colors, 1, function(x) color_distance(x, mean_color))
+  selected_colors <- rgb_colors[which.max(distances_to_mean), , drop = FALSE]
+  selected_indices <- which.max(distances_to_mean)
+  
+  # Select the remaining N-1 most different colors
+  for (i in 2:N) {
+    distances <- apply(rgb_colors, 1, function(x) min(sapply(1:nrow(selected_colors), function(j) color_distance(x, selected_colors[j, ]))))
+    next_color_index <- which.max(distances)
+    selected_colors <- rbind(selected_colors, rgb_colors[next_color_index, , drop = FALSE])
+    selected_indices <- c(selected_indices, next_color_index)
+  }
+  
+  # Return the HEX codes of the selected colors
+  return(hex_colors[selected_indices])
+}
+
+

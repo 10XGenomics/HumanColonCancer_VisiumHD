@@ -67,9 +67,10 @@ PlotDeconvolution<-bcsHD  %>% na.omit() %>%
   labs(color="Cell Type")+NoLegend()
 
 
-
+# A and B
 PlotCluster/PlotDeconvolution
 
+# C
 # Get clustering - deconvolution confusion matrix
 Mat<-prop.table(table(bcsHD$Cluster,bcsHD$DeconvolutionLabel1),margin=1)*100
 Mat[is.nan(Mat)]<-0
@@ -97,7 +98,7 @@ pheatmap(Mat,cluster_rows = T,color = HMCol,border_color = "black",annotation_co
 
 
 
-# C) Expression Zoom Ins
+# D) Expression Zoom Ins
 
 ### Here we list BC and gene relationship for zoom-ins
 

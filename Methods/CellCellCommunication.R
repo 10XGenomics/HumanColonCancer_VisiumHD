@@ -1,69 +1,193 @@
-## Cell Cell Communication Analysis
-library(cli,lib.loc = "/mnt/home/juanpablo.romerorioj/yard/Seurat5/")
-library(dplyr,lib.loc = "/mnt/home/juanpablo.romerorioj/yard/Seurat5/")
-library(liana,lib.loc = "/mnt/home/juanpablo.romerorioj/yard/Seurat5/")
-library(SeuratObject,lib.loc = "/mnt/home/juanpablo.romerorioj/yard/Seurat5/")
-library(Seurat,lib.loc = "/mnt/home/juanpablo.romerorioj/yard/Seurat5/")
-library(BPCells,lib.loc = "/mnt/home/juanpablo.romerorioj/yard/Seurat5/")
+### Visium HD Manuscript
 
-#### One Sample Only (P1CRC)
+## METHOD:  Cell Cell Communication Analysis
 
-SampleInfo<-data.frame(Sample=c("P1CRC","P2CRC","P5CRC"),
-                       H5=c("/mnt/home/juanpablo.romerorioj/deck/VisiumHD/Online/P1CRC/binned_outputs/square_008um/filtered_feature_bc_matrix.h5",
-                            "/mnt/home/juanpablo.romerorioj/deck/VisiumHD/Online/P2CRC/binned_outputs/square_008um/filtered_feature_bc_matrix.h5",
-                            "/mnt/home/juanpablo.romerorioj/deck/VisiumHD/Online/P5CRC/binned_outputs/square_008um/filtered_feature_bc_matrix.h5"),
-                       Deconv=c("/mnt/home/juanpablo.romerorioj/deck/VisiumHD/Online/P1CRC/DeconvolutionResults_P1CRC.csv.gz",
-                                "/mnt/home/juanpablo.romerorioj/deck/VisiumHD/Online/P2CRC/DeconvolutionResults_P2CRC.csv.gz",
-                                "/mnt/home/juanpablo.romerorioj/deck/VisiumHD/Online/P5CRC/DeconvolutionResults_P5CRC.csv.gz"))
+# Load packages
+library(cli)
+library(dplyr)
+library(liana)
+library(SeuratObject)
+library(Seurat)
+library(BPCells)
+library(ggplot2)
+library(liana)
+library(circlize)
+library(igraph)
+library(distances)
 
-MD<-readRDS("/mnt/home/juanpablo.romerorioj/deck/VisiumHD/Revisions/Clustering/MetaDataCombined.rds")
-MetaData<-vector("list",length = nrow(SampleInfo))
-Matrices<-vector("list",length = nrow(SampleInfo))
+source("~/Methods/AuxFunctions.R")
 
-PathX<-paste0("/mnt/home/juanpablo.romerorioj/deck/VisiumHD/Revisions/Clustering/",SampleInfo$Sample[1])
-
-mat <- open_matrix_dir(dir = PathX)
-colnames(mat)<-paste0(colnames(mat),"_",SampleInfo$Sample[1])
-
-#mat <- ConvertEnsembleToSymbol(mat = mat, species = "human")
-Genes<-read.delim(file="/mnt/home/juanpablo.romerorioj/deck/VisiumHD/Online/P1CRC/binned_outputs/square_008um/filtered_feature_bc_matrix/features.tsv.gz",sep="\t",header = F)
-rownames(mat)<-make.unique(Genes$V2[match(rownames(mat),Genes$V1)])
-
-MD <- MD[MD$Patient==SampleInfo$Sample[1],]
-
-object <- CreateSeuratObject(counts = mat, meta.data = MD)
-
-Periphery<-readRDS("/mnt/home/juanpablo.romerorioj/yard/Projects/VisiumHD/Results/HD/Periphery_50_100_F00142484_All.rds")
-object$Periphery<-gsub("_P[0-9]CRC","",colnames(object))%in%Periphery
+# Create Sample Info DF
+SampleInfo<-data.frame(Patient=c("P1CRC","P2CRC","P5CRC"),
+                       PathSR=c("~/P1CRC/outs/",
+                            "~/P2CRC/outs/",
+                            "~/P5CRC/outs/"),
+                       PathDeconvolution=c("~/Outputs/Deconvolution/PatientCRC1_Deconvolution_HD.rds",
+                                "~/Outputs/Deconvolution/PatientCRC2_Deconvolution_HD.rds",
+                                "~/Outputs/Deconvolution/PatientCRC5_Deconvolution_HD.rds"),
+                       PathPeriphery=c("~/Outputs/Deconvolution/PatientCRC1_PeripheryBCs.rds",
+                                   "~/Outputs/Deconvolution/PatientCRC2_PeripheryBCs.rds",
+                                   "~/Outputs/Deconvolution/PatientCRC5_PeripheryBCs.rds"),
+                       Tumor=c("Tumor II","Tumor III","Tumor IV"))
 
 
-DecTmp<-read.delim(SampleInfo$Deconv[1],sep=",") %>% na.omit()
-DecTmp$barcode<-paste0(DecTmp$barcode,"_",SampleInfo$Sample[1])
+AllResults<-vector("list",length=nrow(SampleInfo))
+PlotA<-vector("list",length=nrow(SampleInfo))
+PlotB<-vector("list",length=nrow(SampleInfo))
+names(AllResults)<-names(PlotA)<-names(PlotB)<-SampleInfo$Patient
 
-object$DeconvolutionClass<-DecTmp$DeconvolutionClass[match(colnames(object),DecTmp$barcode)]
-object$DeconvolutionLabel1<-DecTmp$DeconvolutionLabel1[match(colnames(object),DecTmp$barcode)]
-object$DeconvolutionLabel2<-DecTmp$DeconvolutionLabel2[match(colnames(object),DecTmp$barcode)]
+for(Patient in SampleInfo$Sample)
+{
+  #Generate MetaData
+  index<-which(SampleInfo$Patient==Patient)
+  bcDF<-GenerateSampleData(SampleInfo$PathSR[index])$bcs
+  Deconv<-readRCTD(SampleInfo$PathDeconvolution[index])
+  bcDF<-AddDeconvolutionInfo(bcDF,Deconv)
+  bcDF<-bcDF %>% filter(tissue==1)
+  
+  # Add Periphery Results
+  PeripheryBCs<-readRDS(SampleInfo$PathPeriphery[index])
+  
+  # Add periphery results to data.frame
+  bcDF$Periphery<-NA
+  bcDF$Periphery[bcDF$barcode%in%PeripheryBCs]<-"50 micron"
+  bcDF$Periphery[is.na(bcDF$Periphery)]<-"Tissue"
+  bcDF$Periphery[bcDF$Periphery=="Tissue" & bcDF$DeconvolutionLabel1==SampleInfo$Tumor[index]]<-"Tumor"
+  
+  # Create Seurat Object (8um)
+  object<-Read10X_h5(paste0(SampleInfo$PathSR,"binned_outputs/square_008um/filtered_feature_bc_matrix.h5"}))
+  CommonBC<-intersect(bcDF$barcode,colnames(object))
+  object<-CreateSeuratObject(object[,CommonBC],meta.data=bcDF[match(CommonBC,bcDF$barcode),])
+  
+  # Analysis To identify Macrophage subtypes [TODO: Replace with saved results]
+  
+  # Keep only barcodes labeled as Macrophage and within the TME
+  SeuratObj<-subset(object,cells=bcDF$barcode[bcDF$DeconvolutionLabel1=="Macrophage" & bcDF$Periphery=="50 micron" & bcDF$DeconvolutionClass=="singlet"])
+  
+  # Full seurat processing
+  SeuratObj<-NormalizeData(SeuratObj)
+  SeuratObj<-FindVariableFeatures(SeuratObj)
+  SeuratObj<-ScaleData(SeuratObj)
+  SeuratObj<-RunPCA(SeuratObj)
+  SeuratObj<-FindNeighbors(SeuratObj,dims=1:10)
+  SeuratObj<-FindClusters(SeuratObj,resolution=0.2)
 
-object <- NormalizeData(object)
+  if(length(unique(SeuratObj$seurat_clusters))>1)
+  {
+    MkMac<-FindAllMarkers(SeuratObj,logfc.threshold = 0.1,min.diff.pct = 0.1,only.pos = T)
+    SPP1_Cluster<-as.vector(MkMac$cluster[match("SPP1",MkMac$gene)])
+    SeuratObj$Group<-ifelse(SeuratObj$seurat_clusters==SPP1_Cluster,"SPP1+","SELENOP+")
+    SeuratObj$ID<-paste0(SeuratObj$DeconvolutionLabel1,"_",SeuratObj$Group)
+  }else{
 
-TME<-subset(object,cells = colnames(object)[object$Periphery & !is.na(object$DeconvolutionLabel1)])
-TME<-SetIdent(TME,value = "DeconvolutionLabel2")
+    SeuratObj$Group<-"SELENOP+"
+    SeuratObj$ID<-paste0(SeuratObj$DeconvolutionLabel1,"_",SeuratObj$Group)
 
-liana_result <- liana_wrap(TME)
+  }
 
-liana_result <- liana_result %>% liana_aggregate()
+  
+  # Add to bcDF
+  bcDF$CellType<-bcDF$DeconvolutionLabel1
+  bcDF$CellType[match(colnames(SeuratObj),bcDF$barcode)]<-SeuratObj$ID
+  
+  # Select Closest Tumor to cells in Periphery
+  RegionI<-bcDF %>% filter(DeconvolutionClass=="singlet" & Periphery%in%c("50 micron","Tumor"))
+  dist_matrix <- distances::distances(as.matrix(RegionI[,c("imagecol","imagerow")]))
+  
+  ## Chunk to make it efficient
+  Values<-which(RegionI$Periphery=="Tumor")
+  PeriIndex<-which(RegionI$Periphery=="50 micron")
+  Chnks<-split(Values, ceiling(seq_along(Values)/1000))
+  ClosestTumorSpot<-vector("list",length=length(Chnks))
+  scales <- rjson::fromJSON(file = paste0(PathSR,"/binned_outputs/square_008um/spatial/scalefactors_json.json"))
+  
+  for(Idx in 1:length(Chnks))
+  {
+    print(Idx)
+    CHUNK<-Chnks[[Idx]]
+    BcChnk<-RegionI$barcode[CHUNK]
+    TmpDist<-dist_matrix[CHUNK,PeriIndex]
+    TmpDist<-(TmpDist*8)/scales$spot_diameter_fullres
+    
+    TmpDist<-TmpDist<=50
+    iix<-which(rowSums(TmpDist)>=5)
+    
+    #iix<-apply(TmpDist,1,function(X){any(X<=50)})
+    if(length(iix)>0)
+    {
+      ClosestTumorSpot[[Idx]]<-BcChnk[iix]
+    }
+    
+  }
+  
+  ClosestTumorSpot<-unique(unlist(ClosestTumorSpot))
 
-liana_result %>% liana_dotplot(source_groups = c("Tumor III"),target_groups = c("CAF","CD4 T cell","CD8 Cytotoxic T cell","Mature B","Memory V","Plasma","Macrophage",
-                                                                                "Proliferating Immune II","Proliferating Macrophages"),ntop = 40)
+  bcDF$Selection<-NA
+  bcDF$Selection[bcDF$Periphery=="50 micron"]<-"50 micron"
+  bcDF$Selection[bcDF$barcode%in%ClosestTumorSpot]<-"Tumor"
+  
+  # Plot
+  PlotA[[Patient]]<-bcDF  %>% filter(DeconvolutionClass=="singlet") %>% 
+    ggplot(aes(x = imagecol_scaled, y = -imagerow_scaled,color=Selection)) +
+    geom_scattermore(pointsize = 3,pixels = rep(2000,2))+
+    coord_cartesian(expand = FALSE) +
+    xlab("") +
+    ylab("") +
+    theme_set(theme_bw(base_size = 10))+
+    theme_minimal() +
+    theme(axis.text = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.grid.major = element_blank())+
+    scale_color_manual(values=c("dodgerblue","firebrick2"),na.value = "lightgray")+
+    labs(color="Group")+ggtitle("")
+  
+  
+  # Create Seurat Object (Again?)
+  object<-Read10X_h5(SampleInfo$H5[index])
+  CommonBC<-intersect(bcDF$barcode,colnames(object))
+  object<-CreateSeuratObject(object[,CommonBC],meta.data=bcDF[match(CommonBC,bcDF$barcode),])
+  object<-subset(object, subset = Selection %in% c("Tumor","50 micron") & DeconvolutionClass=="singlet")
+  object <- NormalizeData(object)
+  object<-SetIdent(object,value = "CellType")
+  
+  # Run C-C using Liana
+  liana_result <- liana_wrap(object)%>% liana_aggregate()%>% filter(aggregate_rank <= 0.01)
+  liana_result$Patient<-Patient
+  AllResults[[Patient]]<-liana_result
+  
+  # Top Interactions
+  #ColX<-colorRampPalette(c("white","firebrick1"))(20)
+  #pheatmap(table(liana_result$source,liana_result$target),color = ColX,border_color = "gray60")
+  
+  CTxs<-c("Macrophage_SPP1+","Macrophage_SELENOP+","CD4 T cell","CD8 Cytotoxic T cell",SampleInfo$Tumor[SampleInfo$Sample==Patient])
+  
+  # Interaction Graph
+  PlotB[[Patient]]<-PlotInteractionGraph(liana_result,CellTypes = CTxs,
+                               Colors = c(ColorPalette(),"Macrophage_SPP1+"="cyan2","Macrophage_SELENOP+"="orchid3"))
+}
 
-liana_result %>% liana_dotplot(source_groups = c("Tumor III"),target_groups = c("Macrophage","Proliferating Macrophages"),ntop = 40)
 
 
-liana_trunc <- liana_result %>% filter(aggregate_rank <= 0.01) # note that these pvals are already corrected
-pheatmap(table(liana_trunc$source,liana_trunc$target))
+CC_Result<-do.call(rbind,AllResults)
+
+iix<-(CC_Result$Patient==SampleInfo$Sample[1] & CC_Result$target==SampleInfo$Tumor[1]) |
+  (CC_Result$Patient==SampleInfo$Sample[2] & CC_Result$target==SampleInfo$Tumor[2]) |
+  (CC_Result$Patient==SampleInfo$Sample[3] & CC_Result$target==SampleInfo$Tumor[3])
+
+CC_Result$target[iix]<-"Tumor"
+
+CC_Result  %>%
+  liana_dotplot(source_groups = c("Macrophage_SPP1+"),
+                target_groups = c("CD8 Cytotoxic T cell","CD4 T cell","Tumor"),ntop = 50)+
+  facet_grid(~Patient)+ggtitle("Macrophage SPP1+")
 
 
-Idents<-c("Macrophage", "CD 4 T cell", "CD8 Cytotoxic T cell","Tumor III")
-p <- chord_freq(liana_trunc,
-                source_groups = Idents,
-                target_groups = Idents)
+CC_Result  %>%
+  liana_dotplot(source_groups = c("Macrophage_SELENOP+"),
+                target_groups = c("CD8 Cytotoxic T cell","CD4 T cell","Tumor"),ntop = 50)+
+  facet_grid(~Patient)+ggtitle("Macrophage SELENOP+")
+
+
+# Access Plots
+PlotA[[1]]
+PlotB[[1]]

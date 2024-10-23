@@ -27,7 +27,7 @@ SampleData<-data.frame(Patient = c("P1CRC","P2CRC","P5CRC"),
                        PathSR=c("~/VisiumHD/PatientCRC1/outs/","~/VisiumHD/PatientCRC2/outs/","~/VisiumHD/PatientCRC5/outs/"),
                        PathDeconvolution=c("~/Outputs/Deconvolution/PatientCRC1_Deconvolution_HD.rds","~/Outputs/Deconvolution/PatientCRC2_Deconvolution_HD.rds","~/Outputs/Deconvolution/PatientCRC5_Deconvolution_HD.rds"),
                        PathPeriphery=c("~/Outputs/Periphery/P1CRC_TME_Barcodes.rds","~/Outputs/Periphery/P2CRC_TME_Barcodes.rds","~/Outputs/Periphery/P5CRC_TME_Barcodes.rds"),
-                       Tumor = c("Tumor III","Tumor II","Tumor IV"))
+                       Tumor = c("Tumor II","Tumor III","Tumor IV"))
 
 
 # T cell deconvolution class
@@ -76,100 +76,6 @@ ggplot(Result, aes(x=Group, y=MD, fill=Var1)) + geom_bar(stat="identity", color=
   theme_classic()+xlab("") + ylab("Proportion (%)")+labs(fill="Group")
 
 
-
-# B) Colocalization Macrophage and T cells
-# We will use PCRC1 as an example
-index<-1
-
-TumorCluster<-SampleData$Tumor[index]
-Sample_path <- SampleData$PathSR[index]
-
-# Create data.frame and add Deconvolution Info
-bcDF<-GenerateSampleData(Sample_path)$bcs
-DeconvolutionHD<-readRCTD(SampleData$PathDeconvolution[index])
-bcDF<-AddDeconvolutionInfo(bcDF,DeconvolutionHD,AddWeights=FALSE)
-
-# Detect Tumor microenviroment (barcodes within 50 microns of tumor)
-# Either load the results from Figure 4 or compute again
-if(file.exists(SampleData$PathPeriphery[index]))
-{
-  PeripheryBCs<-readRDS(SampleData$PathPeriphery[index])
-  
-}else{
-  
-  PeripheryBCs<-SelectPeripheryDiscrete(bcs = bcDF,CellType = TumorCluster,distance=50,PATH = SampleData$PathSR[index])
-}
-
-bcDF$Periphery<-NA
-bcDF$Periphery[bcDF$barcode%in%PeripheryBCs]<-"50 micron"
-bcDF$Periphery[is.na(bcDF$Periphery)]<-"Tissue"
-bcDF$Periphery[bcDF$Periphery=="Tissue" & bcDF$DeconvolutionLabel1==TumorCluster]<-"Tumor"
-
-# Keep only singlet bins to run Macrophage analysis
-bcDF <- bcDF %>% filter(tissue==1 & DeconvolutionClass=="singlet") %>% na.omit()
-
-# Create Seurat Object
-SeuratObj <- Load10X_Spatial(Sample_path, bin.size = 8)
-
-# Subset only to Macrophages in the TME
-SeuratObj<-subset(SeuratObj,cells=bcDF$barcode[bcDF$DeconvolutionLabel1=="Macrophage" & bcDF$Periphery=="50 micron"])
-SeuratObj$CellType<-bcDF$DeconvolutionLabel1[match(colnames(SeuratObj),bcDF$barcode)]
-
-# Standard Seurat Processing
-SeuratObj<-NormalizeData(SeuratObj)
-SeuratObj<-FindVariableFeatures(SeuratObj)
-SeuratObj<-ScaleData(SeuratObj)
-SeuratObj<-RunPCA(SeuratObj)
-SeuratObj<-FindNeighbors(SeuratObj,dims=1:10)
-SeuratObj<-FindClusters(SeuratObj,resolution=0.2)
-
-# Get markers
-CtMarkers<-FindAllMarkers(SeuratObj,logfc.threshold = 0.1,min.diff.pct = 0.1,only.pos = T)
-CtMarkers<-CtMarkers[CtMarkers$p_val_adj<0.05,]
-
-# Rename Clusters
-SPP1_Cluster<-as.vector(CtMarkers$cluster[match("SPP1",CtMarkers$gene)])
-SeuratObj$Group<-ifelse(SeuratObj$seurat_clusters==SPP1_Cluster,"SPP1+","SELENOP+")
-
-# Split barcodes by group
-TypeInfo<-split(rownames(SeuratObj@meta.data),SeuratObj$Group)
-
-# Re compute 
-bcDF<-GenerateSampleData(Sample_path)$bcs
-bcDF<-AddDeconvolutionInfo(bcDF,DeconvolutionHD,AddWeights=FALSE)
-
-# Detect Tumor microenviroment (barcodes within 50 microns of tumor)
-# Either load the results from Figure 4 or compute again
-if(file.exists(SampleData$PathPeriphery[index]))
-{
-  PeripheryBCs<-readRDS(SampleData$PathPeriphery[index])
-  
-}else{
-  
-  PeripheryBCs<-SelectPeripheryDiscrete(bcs = bcDF,CellType = TumorCluster,distance=50,PATH = SampleData$PathSR[index])
-}
-
-bcDF$Periphery<-NA
-bcDF$Periphery[bcDF$barcode%in%PeripheryBCs]<-"50 micron"
-bcDF$Periphery[is.na(bcDF$Periphery)]<-"Tissue"
-bcDF$Periphery[bcDF$Periphery=="Tissue" & bcDF$DeconvolutionLabel1==TumorCluster]<-"Tumor"
-
-# Only keep Singlet and Doublet Certain barcodes
-bcDF <- bcDF %>% filter(tissue==1 & DeconvolutionClass %in% c("singlet","doublet_certain")) %>% na.omit()
-
-#Rename Macrophages
-bcDF$DeconvolutionLabel1[match(TypeInfo[[1]],bcDF$barcode)]<-paste0("Macrophage ",names(TypeInfo)[1])
-bcDF$DeconvolutionLabel1[match(TypeInfo[[2]],bcDF$barcode)]<-paste0("Macrophage ",names(TypeInfo)[2])
-
-# Custom function to plot colocalization of macrophages and T cells
-
-Plot1<-PlotColocalization(bcDF,"CD8 Cytotoxic T cell",c("Macrophage SELENOP+","Macrophage SPP1+"),
-                          Tumor=TumorCluster,BarcodeSet=bcDF$barcode[bcDF$Periphery=="50 micron"],option = "CD8")
-
-Plot2<-PlotColocalization(bcDF,"CD4 T cell",c("Macrophage SELENOP+","Macrophage SPP1+"),
-                          Tumor=TumorCluster,BarcodeSet=bcDF$barcode[bcDF$Periphery=="50 micron"],option = "CD4")
-
-Plot1/Plot2
 
 
 

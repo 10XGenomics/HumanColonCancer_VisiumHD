@@ -72,11 +72,12 @@ Mks<-FindAllMarkers(ColonCancer_Flex,min.diff.pct = 0.2,logfc.threshold = 0.2,on
 Mks<-Mks[Mks$p_val_adj<0.05,]
 
 # Rename Clusters (Manual Annotation)
-NewClusterIDs <- c("Tumor","Smooth Muscle","Tumor","Myeloid","Fibroblast","Fibroblast",
-                   "Intestinal Epithelial","Endothelial","Smooth Muscle","T cells","Intestinal Epithelial",
-                   "B cells","T cells","B cells","Fibroblast","Neuronal","Fibroblast","Myeloid",
-                   "Myeloid","Neuronal","Myeloid","Endothelial","Neuronal","Tumor",
-                   "Intestinal Epithelial","Intestinal Epithelial")
+NewClusterIDs <- c("Tumor","Smooth Muscle","Tumor","Myeloid","Fibroblast",           
+                   "Intestinal Epithelial","Fibroblast","Endothelial","Smooth Muscle","T cells",              
+                   "Intestinal Epithelial","B cells","T cells","B cells","Fibroblast",           
+                   "Neuronal","Fibroblast","Myeloid","Myeloid","Neuronal",             
+                   "Myeloid","Endothelial","Neuronal","Tumor","Fibroblast",           
+                   "B cells","Intestinal Epithelial")
 
 names(NewClusterIDs) <- levels(ColonCancer_Flex)
 
@@ -117,7 +118,7 @@ MarkersSubcluster<-do.call(rbind,MarkersSubcluster)
 MetaDataSubClusters<-do.call(rbind,MetaDataSubClusters)
 
 # Rename Clusters
-Level2Clusters<-data.frame(ID=sort(unique(MetaDataSubClusters$Level2)),
+Level2Clusters<-data.frame(ID=sort(unique(MetaDataSubClusters$Level2))),
 Level2Clusters<-data.frame(ID=sort(unique(MetaDataSubClusters$Level2)),
                            Label=c("Plasma","Mature B","Plasma","Proliferating Immune II","Endothelial","Endothelial","Lymphatic Endothelial","CAF",
                                    "Fibroblast","Pericytes","Fibroblast","Myofibroblast","CAF","Myofibroblast","Fibroblast","CAF","Goblet","Enterocyte",

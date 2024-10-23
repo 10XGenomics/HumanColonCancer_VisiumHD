@@ -1,235 +1,185 @@
+#### Visium HD Manuscript
+## Figure 5
 
-library(tidyverse)
+# load packages
 library(Seurat)
-library(glue)
-library(arrow)
+library(scattermore)
+library(tidyverse)
 library(data.table)
+library(wesanderson)
+library(patchwork)
+library(RColorBrewer)
+library(furrr)
+library(paletteer)
+library(arrow)
+library(pheatmap)
+library(RColorBrewer)
+library(distances)
+library(enrichR)
+library(igraph)
+library(ggnetwork
 
 
+# load aux functions
+source("~/Methods/AuxFunctions.R")
 
-sample_names <- c("Xenium_P1", "Xenium_P2", "Xenium_P5","Visium_HD_P1","Visium_HD_P2", "Visium_HD_P5")
-sample_base_paths <- list(xenium_p1_base_path = "/path/to/Xenium_V1_Human_Colon_Cancer_P1_CRC_Add_on_FFPE/",
-                          xenium_p2_base_path = "/path/to/Xenium_V1_Human_Colon_Cancer_P2_CRC_Add_on_FFPE/",
-                          xenium_p5_base_path = "/path/to/Xenium_V1_Human_Colon_Cancer_P5_CRC_Add_on_FFPE/",
-                          hd_p1_base_path = "/path/to/Visium_HD_Human_Colon_Cancer_P1/",
-                          hd_p2_base_path = "/path/to/Visium_HD_Human_Colon_Cancer_P2/",
-                          hd_p5_base_path = "/path/to/Visium_HD_Human_Colon_Cancer_P5/")
+## This analysis requires to process all samples and combine in order to generate
+## the corresponding results. We wrap the full piepeline in a loop.
 
-
-
-# Visium Xenium Alignment
-
-hd_paths <- sample_base_paths[str_detect(names(sample_base_paths), "hd")]
-get_tissue_positions_8um <- function(base_path) {
-  tp_path <- glue("{base_path}/binned_outputs/square_008um/spatial/tissue_positions.parquet")
-  return(read_parquet(tp_path))
-}
-
-tp <- map(.x = hd_paths, .f = get_tissue_positions_8um)
-names(tp) <- hd_paths
-tp
+SampleData<-data.frame(Patient = c("P1CRC","P2CRC","P5CRC"),
+                       PathSR=c("~/VisiumHD/PatientCRC1/outs/","~/VisiumHD/PatientCRC2/outs/","~/VisiumHD/PatientCRC5/outs/"),
+                       PathDeconvolution=c("~/Outputs/Deconvolution/PatientCRC1_Deconvolution_HD.rds","~/Outputs/Deconvolution/PatientCRC2_Deconvolution_HD.rds","~/Outputs/Deconvolution/PatientCRC5_Deconvolution_HD.rds"),
+                       PathPeriphery=c("~/Outputs/Periphery/P1CRC_TME_Barcodes.rds","~/Outputs/Periphery/P2CRC_TME_Barcodes.rds","~/Outputs/Periphery/P5CRC_TME_Barcodes.rds"),
+                       Tumor = c("Tumor II","Tumor III","Tumor IV"))
 
 
+CellType<-"Macrophage"
+BCMacro<-vector("list",length=3)
+Matrices<-vector("list",length=3)
 
-get_microscope_image_path <- function(base_path) {
-  image_path <- glue("{base_path}/tissue_image.btf")
-  return(image_path)
-}
-#Note: must have image magick installed locally (https://imagemagick.org/)
-image_paths <- map(hd_paths, get_microscope_image_path)
-image_dims <- map(image_paths, ~ system(glue("magick identify {.x}"), intern = TRUE)[[1]])
-
-# Get image widths and heights
-widths <- numeric(length(image_dims))
-heights <- numeric(length(image_dims))
-
-# Loop through each item in the list
-for (i in seq_along(image_dims)) {
-  # Extract the string containing dimensions
-  dimension_string <- regmatches(image_dims[[i]], regexpr("\\d+x\\d+", image_dims[[i]]))[1]
+for(index in 1:nrow(SampleData))
+{
+  # Generate sample data.frame
+  Sample_path <- SampleData$PathSR[index]
   
-  # Split the dimension string into width and height
-  dimensions <- strsplit(dimension_string, "x")[[1]]
+  TumorCluster<-SampleData$Tumor[index]
   
-  # Store width and height
-  widths[i] <- as.numeric(dimensions[1])
-  heights[i] <- as.numeric(dimensions[2])
-}
-
-# Create a data frame
-image_dimensions <- data.frame(samples_hd = sample_names[str_detect(sample_names, "HD")], Width = widths, Height = heights)
-
-# get HD image dimensions
-tp_row_max_full_res <- list()
-for (i in seq_along(tp)) {
-  im_dims <- image_dimensions[i, ]
-  tp_row_max_full_res[[i]] <- list("max" = tp[[i]] %>% 
-                                     pull(pxl_row_in_fullres) %>% 
-                                     max(),
-                                   "min" = tp[[i]] %>% 
-                                     pull(pxl_row_in_fullres) %>% 
-                                     min()
-  )
-  if(tp_row_max_full_res[[i]][["min"]] < 0) {
-    tp_row_max_full_res[[i]][["min"]] = 0
-  }
+  DataHD<-GenerateSampleData(Sample_path)
+  bcsHD<-DataHD$bcs
   
-  if(tp_row_max_full_res[[i]][["max"]] > im_dims$Height) {
-    tp_row_max_full_res[[i]][["max"]] = im_dims
-  }
-}
-
-names(tp_row_max_full_res) <- sample_names[str_detect(sample_names, "HD")]
-
-
-
-tp_col_max_full_res <- list()
-for (i in seq_along(tp)) {
-  tp_col_max_full_res[[i]] <- list("max" = tp[[i]] %>% 
-                                     pull(pxl_col_in_fullres) %>% 
-                                     max(),
-                                   "min" = tp[[i]] %>% 
-                                     pull(pxl_col_in_fullres) %>% 
-                                     min()
-  )
-  if(tp_col_max_full_res[[i]][["min"]] < 0) {
-    tp_col_max_full_res[[i]][["min"]] = 0
-  }
+  # Read Deconvolution results and add to DF
+  DeconvolutionHD<-readRCTD(SampleData$PathDeconvolution[index])
+  bcsHD<-AddDeconvolutionInfo(bcsHD,DeconvolutionHD,AddWeights=FALSE)
   
-  if(tp_col_max_full_res[[i]][["max"]] > im_dims$Width) {
-    tp_col_max_full_res[[i]][["max"]] = im_dims
-  }
-}
-
-names(tp_col_max_full_res) <- sample_names[str_detect(sample_names, "HD")]
-
-
-# Get the xenium and HD aligned image files
-## This will allow us to only assess xenium cells that are within the visium hd capture area
-## cell_info.csv available in the manuscript git repo
-xenium_paths <- sample_base_paths[str_detect(sample_base_paths, "Xenium")]
-get_xenium_cell_cords <- function(sample_name) {
-  xenium_cell_info <- glue("/path/to/Figures/Xenium_Visium_Alignment/{sample_name}_cell_info.csv.gz")
-  return(fread(xenium_cell_info))
-}
-
-xenium_cell_cords <- map(.x = sample_names,  ~ get_xenium_cell_cords(.x))
-names(xenium_cell_cords) <- sample_names[str_detect(sample_names, "Xenium")]
-
-
-# Select only cells and barcodes within the visium HD capture area
-for (i in seq_along(xenium_cell_cords)) {
-  xenium_cell_cords[[i]] <- xenium_cell_cords[[i]] %>% 
-  filter(x_centroid_visium_scale <= tp_col_max_full_res[[i]]$max &
-         x_centroid_visium_scale >= tp_col_max_full_res[[i]]$min) %>% 
-  filter(y_centroid_visium_scale <= tp_row_max_full_res[[i]]$max &
-        tp_row_max_full_res[[i]]$min >= 0)
+  # Filter data.frame to keep bins within tissues and are singlets (only 1 cell type)
+  bcDF <- bcsHD %>% filter(tissue==1 & DeconvolutionClass=="singlet") %>% na.omit()
+  
+  PeripheryBCs<-readRDS(SampleData$PathPeriphery[index])
+  
+  # Add periphery results to data.frame
+  bcDF$Periphery<-NA
+  bcDF$Periphery[bcDF$barcode%in%PeripheryBCs]<-"50 micron"
+  bcDF$Periphery[is.na(bcDF$Periphery)]<-"Tissue"
+  bcDF$Periphery[bcDF$Periphery=="Tissue" & bcDF$DeconvolutionLabel1==TumorCluster]<-"Tumor"
+  
+  bcDF$Patient<-SampleData$Patient[index]
+  
+  Rex<-bcDF %>% filter(DeconvolutionLabel1==CellType) %>% select(c("barcode","Periphery","Patient"))
+  Rex$BCMat<-paste0(Rex$barcode,"_",Rex$Patient)
+  
+  
+  mat <- open_matrix_dir(dir = getwd()) # DIR where the expression is saved on disk
+  colnames(mat)<-paste0(colnames(mat),"_",SampleData$Patient[index])
+  
+  Genes<-read.delim(file="~/VisiumHD/PatientCRC1/outs/binned_outputs/square_008um/filtered_feature_bc_matrix/features.tsv.gz",sep="\t",header = F)
+  rownames(mat)<-make.unique(Genes$V2[match(rownames(mat),Genes$V1)])
+  
+  Matrices[[index]] <- mat[,Rex$BCMat]
+  BCMacro[[index]]<-Rex
+  
+  
 }
 
 
-# Get totalu UMI counts for each feature
-get_per_feature_umis <- function(base_path){
-  if(str_detect(base_path, "Xenium")){
-    print("Reading Xenium Data")
-    mat <-  Read10X_h5(glue("{base_path}/cell_feature_matrix.h5"))
-    mat <- mat$`Gene Expression`
-  } else {
-    print("Reading HD Data")
-    mat <- Read10X_h5(glue("{base_path}/binned_outputs/square_008um/filtered_feature_bc_matrix.h5")) 
-  }
-  per_feature_umis <- rowSums(mat) %>% 
-        as.data.frame() %>%
-        rownames_to_column("feature_name") %>% 
-        dplyr::rename("num_umis" = 2 )%>% 
-        distinct(feature_name, .keep_all = TRUE)
-    return(per_feature_umis)
+BCMacro<-do.call(rbind,BCMacro)
+BCMacro<-as.data.frame(BCMacro)
+rownames(BCMacro)<-BCMacro$BCMat
+
+merged.object <- CreateSeuratObject(counts = Matrices)
+merged.object<-JoinLayers(merged.object)
+
+merged.object<-AddMetaData(merged.object,BCMacro)
+
+# Full seurat processing
+merged.object<-NormalizeData(merged.object)
+merged.object<-FindVariableFeatures(merged.object)
+merged.object<-ScaleData(merged.object)
+merged.object<-RunPCA(merged.object)
+ElbowPlot(merged.object,ndims = 30)
+merged.object<-FindNeighbors(merged.object,dims=1:15)
+merged.object<-FindClusters(merged.object,resolution=0.2)
+
+Mks<-FindAllMarkers(merged.object,logfc.threshold = 0.05,min.diff.pct = 0.05,only.pos = T) %>% filter(p_val_adj<0.05)
+
+
+GenesPlot<-c(Mks %>% group_by(cluster) %>% slice_max(order_by = -p_val_adj,n=5) %>% pull(gene),"SELENOP","FOLR2")
+GenesPlot<-GenesPlot[c(1:10,12:25,27,26,11)]
+
+DotPlot(merged.object,features = GenesPlot,dot.min = 0.1)+coord_flip()+ylab("Cluster")+xlab("")+
+  scale_color_gradientn(colours = colorspace::diverge_hcl(5))
+
+
+PropsData<-as.data.frame(prop.table(table(merged.object$seurat_clusters,merged.object$Periphery),margin=1)*100)
+levels(PropsData$Var2)<-c("<= 50 microns","> 50 microns")
+PropsData$Var2[PropsData$Var2=="Tissue"]<-"> 50 microns"
+
+PlotProp1<-ggplot(PropsData,aes(x=Var1,y=Freq,fill=Var2))+geom_bar(stat="identity")+theme_classic()+scale_fill_manual(values=c("gray28","lightgray"))+
+  xlab("Macrophage Cluster")+ylab("Proportion (%)")+coord_flip()+labs(fill="Distance")
+
+PropsData2<-as.data.frame(prop.table(table(merged.object$seurat_clusters,merged.object$Patient),margin=1)*100)
+
+PlotProp2<-ggplot(PropsData2,aes(x=Var1,y=Freq,fill=Var2))+geom_bar(stat="identity")+theme_classic()+
+  xlab("Macrophage Cluster")+ylab("Proportion (%)")+coord_flip()+labs(fill="Patient")+scale_fill_manual(values=c("#3b9ab2","#ebcb2a","#f21800"))
+
+PlotProp1+PlotProp2
+
+
+MacroMeta<-merged.object@meta.data
+
+### Spatial Plots
+index<-which(SampleData$Patient=="P1CRC")
+MacroIx<-MacroMeta[MacroMeta$Patient==SampleData$Patient[index],]
+
+DataHD<-GenerateSampleData(SampleData$PathSR[index])
+bcsHD<-DataHD$bcs
+
+DeconvolutionHD<-readRCTD(SampleData$PathDeconvolution[index])
+bcsHD<-AddDeconvolutionInfo(bcsHD,DeconvolutionHD,AddWeights=FALSE)
+
+# Filter data.frame to keep bins within tissues and are singlets (only 1 cell type)
+bcDF <- bcsHD %>% filter(tissue==1 & DeconvolutionClass=="singlet") %>% na.omit()
+
+# Create used variables (Patient ID and Tumor Cluster)
+Patient<-SampleData$Patient[index]
+TumorCluster<-SampleData$Tumor[index]
+
+# Detect Tumor microenviroment (barcodes within 50 microns of tumor)
+# Either load the results from Figure 4 or compute again
+if(file.exists(SampleData$PathPeriphery[index]))
+{
+  PeripheryBCs<-readRDS(SampleData$PathPeriphery[index])
+  
+}else{
+  
+  PeripheryBCs<-SelectPeripheryDiscrete(bcs = bcDF,CellType = TumorCluster,distance=50,PATH = SampleData$PathSR[index])
 }
 
-pfumi <- map(sample_base_paths,  ~ get_per_feature_umis(.x))
-names(pfumi) <- sample_names
+# Add periphery results to data.frame
+bcDF$Periphery<-NA
+bcDF$Periphery[bcDF$barcode%in%PeripheryBCs]<-"50 micron"
+bcDF$Periphery[is.na(bcDF$Periphery)]<-"Tissue"
+bcDF$Periphery[bcDF$Periphery=="Tissue" & bcDF$DeconvolutionLabel1==TumorCluster]<-"Tumor"
+
+iix<-match(rownames(bcDF),MacroIx$barcode)
+
+bcDF$MacroNew<-as.vector(MacroIx$seurat_clusters[match(bcDF$barcode,MacroIx$barcode)])
+bcDF$MacroNew[bcDF$DeconvolutionLabel1==SampleData$Tumor[index]]<-"Tumor"
+bcDF$MacroNew<-factor(bcDF$MacroNew,levels = sort(unique(bcDF$MacroNew)))
+
+bcDF  %>%  
+  ggplot(aes(x = imagecol_scaled, y = -imagerow_scaled,color=MacroNew)) +
+  geom_scattermore(pointsize = 3,pixels = rep(2000,2))+
+  coord_cartesian(expand = FALSE) +
+  xlab("") +
+  ylab("") +
+  theme_set(theme_bw(base_size = 10))+
+  theme_minimal() +
+  theme(axis.text = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.grid.major = element_blank())+
+  scale_color_manual(values=c("gold","sienna1","green4","purple","azure4"),na.value = "lightgray")+
+  labs(color="Cluster")+ggtitle("")+NoLegend()
 
 
 
-pfumi_df <- pfumi %>% list_flatten() %>% bind_rows(.id = "sample")
-
-
-# Make Plots
-## P1
-  plot_data_p1 <- pfumi_df %>% 
-    filter(sample %in% c("Xenium_P1","Visium_HD_P1")) %>% 
-    spread(sample, num_umis) %>% 
-    filter(!if_any(everything(), is.na))
-    
-    
-  
-  plot_p1 <- plot_data_p1 %>% 
-    ggplot(aes(x = log10(Xenium_P1 + 1), y = log10(Visium_HD_P1+1))) +
-    geom_point(color = "#990F20") +
-    geom_abline(color = "blue")+
-    ggpubr::stat_cor(data = plot_data_p1, color = "black",
-                               aes(x = log10(Xenium_P1 + 1),
-                                   y = log10(Visium_HD_P1 + 1),
-                                   label = after_stat(rr.label)),
-                               inherit.aes = FALSE,
-                               size = 5, method = "spearman")+
-    xlab(glue("log10(UMIs +1): Xenium")) +
-    ylab(glue("log10(UMIs +1): Visium_HD")) +
-    ggtitle(glue::glue("P1 CRC"))+
-    xlim(0,7) +
-    ylim(0,7) +
-    theme_bw() + 
-    ggeasy::easy_all_text_size(size = 20)
-
-## P2
-  plot_data_p2 <- pfumi_df %>% 
-    filter(sample %in% c("Xenium_P2","Visium_HD_P2")) %>% 
-    spread(sample, num_umis) %>% 
-    filter(!if_any(everything(), is.na))
-    
-    
-  
-  plot_p2 <- plot_data_p2 %>% 
-    ggplot(aes(x = log10(Xenium_P2 + 1), y = log10(Visium_HD_P2+1))) +
-    geom_point(color = "#990F20") +
-    geom_abline(color = "blue")+
-    ggpubr::stat_cor(data = plot_data_p2, color = "black",
-                               aes(x = log10(Xenium_P2 + 1),
-                                   y = log10(Visium_HD_P2 + 1),
-                                   label = after_stat(rr.label)),
-                               inherit.aes = FALSE,
-                               size = 5, method = "spearman")+
-    xlab(glue("log10(UMIs +1): Xenium")) +
-    ylab(glue("log10(UMIs +1): Visium_HD")) +
-    ggtitle(glue::glue("p2 CRC"))+
-    xlim(0,7) +
-    ylim(0,7) +
-    theme_bw() + 
-    ggeasy::easy_all_text_size(size = 20)
-
-
-## P5
-  plot_data_p5 <- pfumi_df %>% 
-    filter(sample %in% c("Xenium_P5","Visium_HD_P5")) %>% 
-    spread(sample, num_umis) %>% 
-    filter(!if_any(everything(), is.na))
-    
-    
-  
-  plot_p5 <- plot_data_p5 %>% 
-    ggplot(aes(x = log10(Xenium_P5 + 1), y = log10(Visium_HD_P5+1))) +
-    geom_point(color = "#990F20") +
-    geom_abline(color = "blue")+
-    ggpubr::stat_cor(data = plot_data_p5, color = "black",
-                               aes(x = log10(Xenium_P5 + 1),
-                                   y = log10(Visium_HD_P5 + 1),
-                                   label = after_stat(rr.label)),
-                               inherit.aes = FALSE,
-                               size = 5, method = "spearman")+
-    xlab(glue("log10(UMIs +1): Xenium")) +
-    ylab(glue("log10(UMIs +1): Visium_HD")) +
-    ggtitle(glue::glue("P5 CRC"))+
-    xlim(0,7) +
-    ylim(0,7) +
-    theme_bw() + 
-    ggeasy::easy_all_text_size(size = 20)
 
