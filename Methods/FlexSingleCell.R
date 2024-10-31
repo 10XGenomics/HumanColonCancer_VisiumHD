@@ -19,7 +19,7 @@ Flex.mat <- open_matrix_dir(dir = "~/Outputs/FlexSeurat/")
 Flex.mat <- ConvertEnsembleToSymbol(mat = Flex.mat, species = "human") 
 
 # Read aggregation_csv.csv file to be used as MetaData ( Patient, etc)
-MetaData<-read.csv(paste0(FlexOutPath,"aggregation_csv.csv"))
+MetaData<-read.csv(paste0(FlexOutPath,"aggregation.csv"))
 MetaData$Patient<-sapply(strsplit(MetaData$sample_id,"_"),function(X){return(X[6])})
 MetaData$BC<-sapply(strsplit(MetaData$sample_id,"_"),function(X){return(X[7])})
 MetaData$Condition<-gsub("P[0-9]","",MetaData$Patient)
