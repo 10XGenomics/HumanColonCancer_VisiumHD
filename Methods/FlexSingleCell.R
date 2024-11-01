@@ -72,12 +72,10 @@ Mks<-FindAllMarkers(ColonCancer_Flex,min.diff.pct = 0.2,logfc.threshold = 0.2,on
 Mks<-Mks[Mks$p_val_adj<0.05,]
 
 # Rename Clusters (Manual Annotation)
-NewClusterIDs <- c("Tumor","Smooth Muscle","Tumor","Myeloid","Fibroblast",           
-                   "Intestinal Epithelial","Fibroblast","Endothelial","Smooth Muscle","T cells",              
-                   "Intestinal Epithelial","B cells","T cells","B cells","Fibroblast",           
-                   "Neuronal","Fibroblast","Myeloid","Myeloid","Neuronal",             
-                   "Myeloid","Endothelial","Neuronal","Tumor","Fibroblast",           
-                   "B cells","Intestinal Epithelial")
+NewClusterIDs <- c('Tumor','Smooth Muscle','Myeloid','Intestinal Epithelial','Fibroblast',
+                   'Fibroblast','Tumor','Endothelial','T cells','Intestinal Epithelial','Smooth Muscle',
+                   'T cells','B cells','B cells','Fibroblast','Neuronal','Fibroblast','Myeloid','Myeloid',
+                   'Neuronal','Myeloid','Endothelial','Neuronal','Tumor','Fibroblast','B cells')
 
 names(NewClusterIDs) <- levels(ColonCancer_Flex)
 
@@ -119,11 +117,13 @@ MetaDataSubClusters<-do.call(rbind,MetaDataSubClusters)
 
 # Rename Clusters
 Level2Clusters<-data.frame(ID=sort(unique(MetaDataSubClusters$Level2)),
-                           Label=c("Plasma","Mature B","Plasma","Proliferating Immune II","Endothelial","Endothelial","Lymphatic Endothelial","CAF","Fibroblast","Fibroblast","Pericytes",
-                                   "Myofibroblast","CAF","Adipocyte","Goblet","Goblet","Enterocyte","Macrophage","Neutrophil","Macrophage","Mast","Macrophage","mRegDC","Macrophage","Tuft",
-                                   "pDC","Enteric Glial","Neuroendocrine","Enteric Glial","Enteric Glial","Epithelial","SM Stress Response","Smooth Muscle","vSM","Unknown III (SM)",
-                                   "SM Stress Response","CD4 T cell","CD8 Cytotoxic T cell","CD4 T cell","CD4 T cell","Tumor I","Tumor III","Tumor II","Tumor IV","Tumor V","Proliferating Immune II"))
-
+                           Label=c('Plasma','Mature B','Plasma','Proliferating Immune II','Plasma','Endothelial','Endothelial','Lymphatic Endothelial',
+                                   'CAF','Fibroblast','Pericytes','Fibroblast','Myofibroblast','Fibroblast','Unknown III (SM)','CAF','Adipocyte',
+                                   'Goblet','Goblet','Goblet','Macrophage','Neutrophil','Macrophage','Mast','Macrophage','mRegDC','pDC',
+                                   'Enteric Glial','Neuroendocrine','Enteric Glial','Enteric Glial','Tuft','Epithelial','Smooth Muscle',
+                                   'SM Stress Response','vSM','Unknown III (SM)','SM Stress Response','Enterocyte','CD4 T cell','CD8 Cytotoxic T cell',
+                                   'CD4 T cell','CD4 T cell','Tumor I','Tumor III','Tumor IV','Tumor II','Tumor V','Proliferating Immune II'))
+                           
 MetaDataSubClusters$Level2<-Level2Clusters$Label[match(MetaDataSubClusters$Level2,Level2Clusters$ID)]
 
 ColonCancer_Flex$Level2<-MetaDataSubClusters$Level2[match(colnames(ColonCancer_Flex),MetaDataSubClusters$Barcode)]
