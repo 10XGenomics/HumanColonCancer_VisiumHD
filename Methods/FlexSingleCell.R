@@ -29,7 +29,7 @@ MetaData$Barcode<-colnames(Flex.mat)
 rownames(MetaData)<-MetaData$Barcode
 
 # Cell Ranger Results
-UMAP<-read.csv(paste0(FlexOutPath,"/analysis_csv/umap/gene_expression_2_components/projection.csv"))
+UMAP<-read.csv(paste0(FlexOutPath,"/analysis/umap/gene_expression_2_components/projection.csv"))
 MetaData<-cbind(MetaData,UMAP[match(MetaData$Barcode,UMAP$Barcode),2:3])
 
 # Create Seurat Object
