@@ -20,10 +20,9 @@ library(enrichR)
 # load aux functions
 source("~/Methods/AuxFunctions.R")
 
-
 # Read previously created objects (see Sections/FlexAnalysis.R)
 ColonCancer_Flex<-readRDS('~/Outputs/Flex/FlexSeuratV5.rds')
-TumorObject<-subset(ColonCancer_Flex,subset=Level2%in%c("Tumor I","Tumor II","Tumor III","Tumor IV","Tumor V") & Condition=="Tumor")
+TumorObject<-subset(ColonCancer_Flex,subset=Level2%in%c("Tumor I","Tumor II","Tumor III","Tumor IV","Tumor V") & Condition=="CRC")
 
 # Standard processing
 TumorObject<-NormalizeData(TumorObject)
@@ -39,8 +38,8 @@ TumorObject<-FindClusters(TumorObject,resolution=0.4)
 
 
 # UMAP plots
-P2<-DimPlot(TumorObject,label=T,label.size = 4,group.by = "Level2")+ggtitle("Level 2 Clustering")
-P3<-DimPlot(TumorObject,label=T,label.size = 4,group.by = "Sample")+ggtitle("Sample")
+P2<-DimPlot(TumorObject,label=T,label.size = 4,group.by = "Level2",cols=ColorPalette())+ggtitle("Level 2 Clustering")+NoLegend()
+P3<-DimPlot(TumorObject,label=T,label.size = 4,group.by = "Patient",cols=c("#60B177","#EA3323","#5DCBCF","#F09235","#EEE697"))+ggtitle("Patient")
 P2+P3
 
 # Get Markers
@@ -59,7 +58,7 @@ palGrad <- colorRampPalette(c(hcl(0,100, c(20,100)), hcl(240,100,c(100,20))))
 
 # Modified DotPlot
 ggplot(Plot,aes(x=features.plot,y=id,size=pct.exp,color=avg.exp.scaled))+geom_point()+coord_flip()+
-  theme_classic()+scale_colour_gradientn(colors=palGrad(50),limits=c(-2,2))+theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  theme_classic()+scale_colour_gradientn(colors=rev(palGrad(50)),limits=c(-2,2))+theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
   xlab("")+ylab("")+guides(size = guide_legend(title = "Percentage Expressed"),color = guide_colorbar(title = "Scaled Expression"))+
   ggtitle("Tumor Subtypes Comparison")
 
@@ -85,5 +84,5 @@ for(GeneX in Genes)
 }
 
 wrap_plots(AllPlots,ncol = 3,nrow = 4,byrow = T,guides = "collect")
-
+gg
 
