@@ -22,7 +22,7 @@ source("~/Methods/AuxFunctions.R")
 
 
 # Read single cell MetaData 
-MetaData<-read.csv('SingleCell_MetaData.csv.gz') %>% na.omit()
+MetaData<-read.csv('SingleCell_MetaData.csv.gz') %>% filter(QCFilter=="Keep")
 MetaData$Level1<-factor(MetaData$Level1,levels = sort(unique(MetaData$Level1)))
 MetaData$Level2<-factor(MetaData$Level2,levels = sort(unique(MetaData$Level2)))
 MetaData$Condition<-gsub("P[0-9]","",MetaData$Patient)
