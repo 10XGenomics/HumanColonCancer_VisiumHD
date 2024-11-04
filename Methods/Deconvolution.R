@@ -31,7 +31,6 @@ names(CTRef)<-MetaData$Barcode
 reference <- Reference(FlexRef[,names(CTRef)], CTRef , colSums(FlexRef))
 
 # Deconvolve HD Data
-XenaHD<-BlockXena$HD[Index]
 counts<-Read10X_h5("~/VisiumHD/PatientCRC1/outs/binned_outputs/square_008um/filtered_feature_bc_matrix.h5")
 coords<-read_parquet("~/VisiumHD/PatientCRC1/outs/binned_outputs/square_008um/spatial/tissue_positions.parquet",as_data_frame = TRUE)
 rownames(coords)<-coords$barcode
