@@ -9,7 +9,7 @@ library(Seurat)
 library(spacexr) # Should be the modified version [see PR: ADD LINK TO PR]
 
 FlexOutPath <- "~/AggrOutput/outs" # Path to cellranger aggr output folder
-ColonFlex.data <- -Read10X_h5(paste0(FlexOutPath,"filtered_feature_bc_matrix.h5")) 
+ColonFlex.data <- Read10X_h5(paste0(FlexOutPath,"filtered_feature_bc_matrix.h5")) 
 
 ## Load Reference Data
 FlexRef<-Read10X_h5(paste0(FlexOutPath,"filtered_feature_bc_matrix.h5"))
