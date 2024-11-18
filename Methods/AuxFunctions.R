@@ -13,7 +13,7 @@ GenerateSampleData<-function(PATH,size="008um")
     dplyr::rename_with(~ c("barcode", "tissue", "row", "col", "imagerow", "imagecol"))
   path_scales <- file.path(PATH, paste0("/binned_outputs/square_",size,"/spatial/scalefactors_json.json"))
   scales <- rjson::fromJSON(file = path_scales)
-  path_clusters <- file.path(PATH, paste0("/binned_outputs/square_",size,"/analysis_csv/clustering/gene_expression_graphclust/clusters.csv"))
+  path_clusters <- file.path(PATH, paste0("/binned_outputs/square_",size,"/analysis/clustering/gene_expression_graphclust/clusters.csv"))
   
   images_tibble_mod <- images_tibble %>% filter(Path == PATH)
   
@@ -21,7 +21,7 @@ GenerateSampleData<-function(PATH,size="008um")
   if(file.exists(path_clusters))
   {
     clusters <- read.csv(path_clusters)
-    path_umap <- file.path(PATH, paste0("/binned_outputs/square_",size,"/analysis_csv/umap/gene_expression_2_components/projection.csv"))
+    path_umap <- file.path(PATH, paste0("/binned_outputs/square_",size,"/analysis/umap/gene_expression_2_components/projection.csv"))
     umap <- read.csv(path_umap)
     
     bcs <- tissue_positions_df %>% mutate(imagerow_scaled = imagerow * 
