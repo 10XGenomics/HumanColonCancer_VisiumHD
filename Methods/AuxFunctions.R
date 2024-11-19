@@ -1039,3 +1039,90 @@ most_different_colors <- function(hex_colors, N) {
 }
 
 
+SpatialAccuracy<-function(barcodes,Path,Genes)
+{
+  # Generate BC data.frame
+  BCS<-GenerateSampleData(Path)$bcs
+  BCS<- BCS %>% filter(tissue==1)
+  
+  # Read full H5 matrix
+  Mat<-Read10X_h5(paste0(Path,"/binned_outputs/square_008um/filtered_feature_bc_matrix.h5"))[,BCS$barcode]
+  
+  # Add nUMI column to data.frame
+  BCS$nUMI<-colSums(Mat)
+  
+  # Generate full section Plot and add squares
+  SqDF<-c()
+  
+  for(index in 1:length(barcodes))
+  {
+    Selection<-GetSquare(barcodes[index],500,BCS)
+    BCS$IsSelection<-BCS$barcode%in%Selection
+    SqDF<-rbind(SqDF,BCS %>% filter(IsSelection) %>% summarise(Xmin=min(imagecol_scaled),Xmax=max(imagecol_scaled),Ymin=min(-imagerow_scaled),Ymax=max(-imagerow_scaled),Group="Square",Label=LETTERS[index]))
+  }
+  
+  RowTitle<-sapply(1:length(barcodes), function(x) paste(rep("i", x), collapse = ""))
+  
+  LabelDF<-data.frame(imagecol_scaled=apply(SqDF[,1:2],1,mean),
+                      imagerow_scaled=apply(SqDF[,3:4],1,mean),
+                      Label=RowTitle)
+  
+  PlotAll<-BCS %>% ggplot(aes(x = imagecol_scaled, y = -imagerow_scaled,color=log(nUMI+1))) + 
+    geom_scattermore(pointsize = 2,pixels = rep(2000,2))+
+    scale_color_viridis(option="B")+
+    coord_cartesian(expand = FALSE) +
+    xlab("") +
+    ylab("") +
+    theme_set(theme_bw(base_size = 10))+
+    theme_minimal() +
+    theme(axis.text = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.grid.major = element_blank(),
+          legend.position="bottom")+
+    geom_rect(data=SqDF,aes(xmin=Xmin, xmax=Xmax, ymin=Ymax, ymax=Ymin),
+              fill=NA,color="black",linewidth=1,inherit.aes = FALSE)+
+    labs(color="log UMI")+geom_text(data=LabelDF,aes(x=imagecol_scaled,y=imagerow_scaled,label=Label,fontface=2),size=6,color="black")
+  
+  
+  PlotResult<-vector("list",length=length(barcodes)*(length(Genes)))
+  saveindex<-1
+  
+  MatrixIndex<-matrix(1:(length(Genes)*length(barcodes)),nrow=length(barcodes),ncol = length(Genes),byrow = T)
+  LetterIndex<-MatrixIndex[,1]
+  TitleIndex<-MatrixIndex[1,]
+  
+  for(index in 1:length(barcodes))
+  {
+    message(barcodes[index])
+    Selection<-GetSquare(barcodes[index],500,BCS)
+    BCS$IsSelection<-BCS$barcode%in%Selection
+
+    for(listI in 1:length(Genes))
+    {
+      print(names(Genes)[listI])
+      BCS$Markers<-colSums(Mat[Genes[[listI]],])
+
+        PlotResult[[saveindex]]<-BCS %>% filter(IsSelection) %>%  ggplot(aes(x = imagecol_scaled, y = -imagerow_scaled,color=log(Markers+1)))+
+          geom_point(shape=15,size=8)+scale_color_viridis(option="B",limits=c(0,3))+coord_cartesian(expand = FALSE) +
+          xlab("") +
+          ylab(ifelse(saveindex%in%LetterIndex,RowTitle[index],"")) +
+          theme_set(theme_bw(base_size = 10))+
+          theme_minimal() +
+          theme(axis.text = element_blank(),
+                panel.grid.minor = element_blank(),
+                panel.grid.major = element_blank(),
+                axis.title.y = element_text(angle=0,size=14))+ggtitle(ifelse(saveindex %in% TitleIndex,names(Genes)[saveindex],""),
+                                                                      subtitle = ifelse(saveindex %in% TitleIndex,paste(Genes[[saveindex]],collapse=","),""))+
+          labs(color="log UMI")
+
+      saveindex<-saveindex+1
+      
+    }
+    
+    
+  }
+  
+  P2<-Reduce(`+`, PlotResult)+plot_layout(guides = 'collect')
+  
+  return(PlotAll+P2)
+}
