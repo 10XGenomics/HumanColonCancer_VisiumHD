@@ -15,13 +15,12 @@ library(arrow)
 library(pheatmap)
 library(RColorBrewer)
 library(distances)
-library(enrichR)
+
+options(future.globals.maxSize = 1000 * 1024^2)
 
 # load aux functions
 source("~/Methods/AuxFunctions.R")
 
-
-options(future.globals.maxSize = 1000 * 1024^2)
 
 SampleInfo<-data.frame(Sample=c("P1CRC","P2CRC","P5CRC"),
                        H5=c("~/VisiumHD/PatientCRC1/outs/binned_outputs/square_008um/filtered_feature_bc_matrix.h5",
@@ -36,7 +35,7 @@ Matrices<-vector("list",length = nrow(SampleInfo))
 
 for(jj in 1:nrow(SampleInfo))
 {
-
+  
   MatData <- open_matrix_10x_hdf5(path = SampleInfo$H5[jj])
   write_matrix_dir(mat = MatData,dir = getwd(),overwrite = TRUE)
   
@@ -179,31 +178,6 @@ MetaData.merged$L2<-factor(MetaData.merged$L2,levels=sort(unique(MetaData.merged
 ColsL2<-paletteer::paletteer_d("ggsci::default_igv")[1:length(levels(MetaData.merged$L2))]
 names(ColsL2)<-levels(MetaData.merged$L2)
 
-
-# Proportion Heatmap using only Deconvolution singlet bins
-ix_Singlet<-MetaData.merged$DeconvolutionClass=="singlet"
-ConfusionMatrix<-prop.table(table(MetaData.merged$DeconvolutionLabel1[ix_Singlet],MetaData.merged$L2[ix_Singlet]),margin = 1)*100
-
-ConfusionMatrix[which(is.na(ConfusionMatrix))]<-0
-
-AnnotRow<-data.frame(CellType=rownames(ConfusionMatrix))
-rownames(AnnotRow)<-rownames(ConfusionMatrix)
-
-AnnotCol<-data.frame(Level1=sapply(strsplit(colnames(ConfusionMatrix),"-"),function(X){return(X[1])}),
-                     Level2=colnames(ConfusionMatrix))
-rownames(AnnotCol)<-colnames(ConfusionMatrix)
-
-ColorsAnnotation<-list(CellType=ColorPalette(),Level1=ColsL1,Level2=ColorsExtra())
-names(ColorsAnnotation$Level1)<-gsub(" ","",names(ColorsAnnotation$Level1))
-
-ColorHM<-colorRampPalette(c("white","red"))(25)
-
-pheatmap(ConfusionMatrix,annotation_row = AnnotRow,annotation_col = AnnotCol,color=ColorHM,
-         annotation_legend = FALSE,border_color=NA,annotation_colors = ColorsAnnotation,cluster_cols = F)
-
-
-
-
 # SpatialPlots (P1CRC as an example)
 Patient<-"P1CRC"
 
@@ -226,23 +200,8 @@ DF$nCount_RNA<-BarcodeData$nCount_RNA[match(paste0(DF$barcode,paste0("_",Patient
 DF$nFeature_RNA<-BarcodeData$nFeature_RNA[match(paste0(DF$barcode,paste0("_",Patient)),rownames(BarcodeData))]
 
 
-L1_A<-DF  %>% filter(tissue==1) %>% 
+DF %>% filter(tissue==1) %>% 
   ggplot(aes(x = imagecol_scaled, y = -imagerow_scaled,color=Level1)) +
-  geom_scattermore(pointsize = 3,pixels = rep(2000,2))+
-  coord_cartesian(expand = FALSE) +
-  xlab("") +
-  ylab("") +
-  theme_set(theme_bw(base_size = 10))+
-  theme_minimal() +
-  theme(axis.text = element_blank(),
-        panel.grid.minor = element_blank(),
-        panel.grid.major = element_blank())+
-  scale_color_manual(values=ColsL1)+
-  labs(color="Level 1")+ggtitle("")+NoLegend()
-
-
-L2_A<-DF  %>% filter(tissue==1) %>% 
-  ggplot(aes(x = imagecol_scaled, y = -imagerow_scaled,color=Level2)) +
   geom_scattermore(pointsize = 3,pixels = rep(2000,2))+
   coord_cartesian(expand = FALSE) +
   xlab("") +
@@ -256,19 +215,24 @@ L2_A<-DF  %>% filter(tissue==1) %>%
   labs(color="Level 2")+ggtitle("")+NoLegend()
 
 
-L2_D<-DF  %>% filter(tissue==1 & DeconvolutionClass == "singlet") %>% 
-  ggplot(aes(x = imagecol_scaled, y = -imagerow_scaled,color=DeconvolutionL1)) +
-  geom_scattermore(pointsize = 3,pixels = rep(2000,2))+
-  coord_cartesian(expand = FALSE) +
-  xlab("") +
-  ylab("") +
-  theme_set(theme_bw(base_size = 10))+
-  theme_minimal() +
-  theme(axis.text = element_blank(),
-        panel.grid.minor = element_blank(),
-        panel.grid.major = element_blank())+
-  scale_color_manual(values=ColorPalette())+
-  labs(color="Deconvolution")+ggtitle("")+NoLegend()
+# Proportion Heatmap using only Deconvolution singlet bins
+ix_Singlet<-MetaData.merged$DeconvolutionClass=="singlet"
+ConfusionMatrix<-prop.table(table(MetaData.merged$DeconvolutionLabel1[ix_Singlet],MetaData.merged$L2[ix_Singlet]),margin = 1)*100
 
-L1_A+L2_A+L2_D
+ConfusionMatrix[which(is.na(ConfusionMatrix))]<-0
+
+AnnotRow<-data.frame(CellType=rownames(ConfusionMatrix))
+rownames(AnnotRow)<-rownames(ConfusionMatrix)
+
+AnnotCol<-data.frame(Level1=sapply(strsplit(colnames(ConfusionMatrix),"-"),function(X){return(X[1])}),
+                     Level2=colnames(ConfusionMatrix))
+rownames(AnnotCol)<-colnames(ConfusionMatrix)
+
+ColorsAnnotation<-list(CellType=ColorPalette(),Level1=ColsL1,Level2=ColorsExtra())
+names(ColorsAnnotation$Level1)<-gsub(" ","",names(ColorsAnnotation$Level1))
+
+ColorHM<-colorRampPalette(c("white","red"))(25)
+
+pheatmap(ConfusionMatrix,annotation_row = AnnotRow,annotation_col = AnnotCol,color=ColorHM,
+         annotation_legend = FALSE,border_color=NA,annotation_colors = ColorsAnnotation,cluster_cols = F)
 

@@ -16,30 +16,193 @@ library(pheatmap)
 library(RColorBrewer)
 library(distances)
 
+options(future.globals.maxSize = 1000 * 1024^2)
+
 # load aux functions
 source("~/Methods/AuxFunctions.R")
 
 
-# Create data.frame with Patient information (We use PCRC1 as an example)
-SampleData<-data.frame(Patient = "PatientCRC1",
-                       PathSR="~/VisiumHD/PatientCRC1/outs/",
-                       PathDeconvolution="~/Outputs/Deconvolution/PatientCRC1_Deconvolution_HD.rds")
+SampleInfo<-data.frame(Sample=c("P1CRC","P2CRC","P5CRC"),
+                       H5=c("~/VisiumHD/PatientCRC1/outs/binned_outputs/square_008um/filtered_feature_bc_matrix.h5",
+                            "~/VisiumHD/PatientCRC2/outs/binned_outputs/square_008um/filtered_feature_bc_matrix.h5",
+                            "~/VisiumHD/PatientCRC5/outs/binned_outputs/square_008um/filtered_feature_bc_matrix.h5"),
+                       Deconv=c("~/MetaData/DeconvolutionResults_P1CRC.csv.gz",
+                                "~/MetaData/DeconvolutionResults_P2CRC.csv.gz",
+                                "~/MetaData/DeconvolutionResults_P5CRC.csv.gz"))
 
+MetaData<-vector("list",length = nrow(SampleInfo))
+Matrices<-vector("list",length = nrow(SampleInfo))
 
-# Generate sample data.frame
-Sample_path <- SampleData$PathSR
+for(jj in 1:nrow(SampleInfo))
+{
   
-DataHD<-GenerateSampleData(Sample_path)
-bcsHD<-DataHD$bcs
+  MatData <- open_matrix_10x_hdf5(path = SampleInfo$H5[jj])
+  write_matrix_dir(mat = MatData,dir = getwd(),overwrite = TRUE)
   
-# Read Deconvolution results and add to DF
-DeconvolutionHD<-readRCTD(SampleData$PathDeconvolution)
-bcsHD<-AddDeconvolutionInfo(bcsHD,DeconvolutionHD,AddWeights=FALSE)
+  mat <- open_matrix_dir(dir = PathX)
+  colnames(mat)<-paste0(colnames(mat),"_",SampleInfo$Sample[jj])
+  
+  Genes<-read.delim(file="~/VisiumHD/PatientCRC1/outs/binned_outputs/square_008um/filtered_feature_bc_matrix/features.tsv.gz",sep="\t",header = F)
+  rownames(mat)<-make.unique(Genes$V2[match(rownames(mat),Genes$V1)])
+  
+  Matrices[[jj]] <- mat
+  
+}
 
-# Plot unsupervised clustering results
-PlotCluster<-bcsHD  %>% filter(!is.na(Cluster)) %>% 
-  ggplot(aes(x = imagecol_scaled, y = -imagerow_scaled,color=as.factor(Cluster))) +
-  geom_scattermore(pointsize = 2,pixels = rep(2000,2))+
+names(Matrices)<-c("P1CRC","P2CRC","P5CRC")
+
+merged.object <- CreateSeuratObject(counts = Matrices, meta.data = MetaData)
+merged.object<-JoinLayers(merged.object)
+
+AllDeconvolution<-vector("list",length=nrow(SampleInfo))
+for(jj in 1:nrow(SampleInfo))
+{
+  DecTmp<-read.delim(SampleInfo$Deconv[jj],sep=",") %>% na.omit()
+  DecTmp$barcode<-paste0(DecTmp$barcode,"_",SampleInfo$Sample[jj])
+  
+  AllDeconvolution[[jj]]<-DecTmp
+  
+}
+
+AllDeconvolution <- Reduce(rbind, AllDeconvolution)
+
+merged.object$DeconvolutionClass<-AllDeconvolution$DeconvolutionClass[match(colnames(merged.object),AllDeconvolution$barcode)]
+merged.object$DeconvolutionLabel1<-AllDeconvolution$DeconvolutionLabel1[match(colnames(merged.object),AllDeconvolution$barcode)]
+merged.object$DeconvolutionLabel2<-AllDeconvolution$DeconvolutionLabel2[match(colnames(merged.object),AllDeconvolution$barcode)]
+
+# Sketch Full Seurat Object
+merged.object <- NormalizeData(merged.object)
+merged.object <- FindVariableFeatures(merged.object)
+merged.object <- SketchData(object = merged.object,ncells = 240000,method = "LeverageScore",sketched.assay = "sketch")
+
+# Analysis on the Sketch subset
+DefaultAssay(merged.object) <- "sketch"
+
+merged.object <- FindVariableFeatures(merged.object)
+merged.object <- ScaleData(merged.object)
+merged.object <- RunPCA(merged.object)
+merged.object <- FindNeighbors(merged.object, dims = 1:20)
+merged.object <- FindClusters(merged.object, resolution = 0.8)
+merged.object <- RunUMAP(merged.object, dims = 1:20,return.model = T)
+
+IdentsLvl1<-c("Tumor","Intestinal Epithelial","Endothelial","Smooth Muscle","Tumor","Tumor","T cells",
+              "Fibroblast","B cells","Myeloid","Fibroblast","Tumor","Unknown","Intestinal Epithelial","Fibroblast",
+              "Unknown","Myeloid","B cells","Tumor","Tumor","Neuronal","Tumor","Unknown")
+
+merged.object$Level1<-IdentsLvl1[as.numeric(as.vector(merged.object$seurat_clusters))+1]
+merged.object$Level1<-factor(merged.object$Level1,levels=sort(unique(merged.object$Level1)))
+
+merged.object<-SetIdent(merged.object,value = "Level1")
+
+Mks<-FindAllMarkers(merged.object,logfc.threshold = 0.2,min.diff.pct = 0.2,only.pos = T)
+Mks<-Mks[Mks$p_val_adj<0.05,]
+
+# Iterative sub-clustering for level2
+MarkersSubcluster<-vector("list",length=length(IdentsLvl1))
+names(MarkersSubcluster)<-IdentsLvl1
+
+MetaDataSubClusters<-vector("list",length=length(IdentsLvl1))
+names(MetaDataSubClusters)<-IdentsLvl1
+
+for(ClusterID in levels(merged.object$Level1))
+{
+  message(ClusterID)
+  Subset<-subset(merged.object,idents = ClusterID)
+  Subset <- FindVariableFeatures(Subset)
+  Subset <- ScaleData(Subset)
+  Subset <- RunPCA(Subset)
+  Subset <- FindNeighbors(Subset, dims = 1:25)
+  Subset <- FindClusters(Subset, resolution = 0.1)
+  Subset$Level2 <- paste0(gsub(" ","",ClusterID),"_",Subset$seurat_clusters)
+  Subset<-SetIdent(Subset,value="Level2")
+  
+  MetaDataSubClusters[[ClusterID]]<-Subset@meta.data
+  
+  # Get Markers
+  SubMks<-FindAllMarkers(Subset,min.diff.pct = 0.1,logfc.threshold = 0.1,only.pos = T)
+  SubMks<-SubMks[SubMks$p_val_adj<0.05,]
+  
+  MarkersSubcluster[[ClusterID]]<-SubMks
+  
+}
+
+# Convert Markers and MD lists to data.frames
+MarkersSubcluster<-do.call(rbind,MarkersSubcluster)
+MetaDataSubClusters<-do.call(rbind,MetaDataSubClusters)
+
+MetaDataSubClusters$Barcode<-sapply(strsplit(rownames(MetaDataSubClusters),"[.]"),function(X){return(X[2])})
+
+IdentsLevel2<-c("Bcells_0","Bcells_1","Bcells_2","Bcells_3","Bcells_4",
+                "Endothelial_0","Endothelial_1","Endothelial_2","Endothelial_3",
+                "Fibroblast_0","Fibroblast_1","Fibroblast_2",
+                "IntestinalEpithelial_0","IntestinalEpithelial_1","IntestinalEpithelial_2","IntestinalEpithelial_3","IntestinalEpithelial_4","IntestinalEpithelial_5",
+                "Myeloid_0","Myeloid_1","Myeloid_2",
+                "Neuronal_0","Neuronal_1",
+                "SmoothMuscle_0","SmoothMuscle_1","SmoothMuscle_2","SmoothMuscle_3","SmoothMuscle_4",
+                "Tcells_0","Tcells_1","Tcells_2","Tcells_3",
+                "Tumor_0","Tumor_1","Tumor_2","Tumor_3",
+                "Unknown_0","Unknown_1","Unknown_2","Unknown_3","Unknown_4","Unknown_5","Unknown_6")
+
+MetaDataSubClusters$Level2<-factor(MetaDataSubClusters$Level2,levels = IdentsLevel2)
+MarkersSubcluster$cluster<-factor(MarkersSubcluster$cluster,levels = IdentsLevel2)
+
+merged.object$Level2<-MetaDataSubClusters$Level2[match(colnames(merged.object),MetaDataSubClusters$Barcode)]
+
+# Project to Full dataset
+
+merged.object <- Seurat:::ProjectData(
+  object = merged.object,
+  assay = "RNA",
+  full.reduction = "pca.full",
+  sketched.assay = "sketch",
+  sketched.reduction = "pca",
+  umap.model = "umap",
+  dims = 1:50,
+  refdata = list(L1 = "Level1",L2 = "Level2")
+)
+
+
+MetaData.merged$L2<-factor(MetaData.merged$L2,levels=sort(unique(MetaData.merged$L2)))
+LabelsL2<-MetaData.merged %>% group_by(L2) %>% summarise(X=median(fullumap_1),Y=median(fullumap_2))
+LabelsL1<-MetaData.merged %>% group_by(L1) %>% summarise(X=median(fullumap_1),Y=median(fullumap_2))
+
+
+# Create color palettes
+MetaData.merged$L1<-factor(MetaData.merged$L1,levels=sort(unique(MetaData.merged$L1)))
+ColsL1<-paletteer::paletteer_d("ggsci::category10_d3")[1:length(levels(MetaData.merged$L1))]
+names(ColsL1)<-levels(MetaData.merged$L1)
+ColsL1["T cells"]<-"#8C564BFF"
+ColsL1["Neuronal"]<-"#7F7F7FFF"
+
+MetaData.merged$L2<-factor(MetaData.merged$L2,levels=sort(unique(MetaData.merged$L2)))
+ColsL2<-paletteer::paletteer_d("ggsci::default_igv")[1:length(levels(MetaData.merged$L2))]
+names(ColsL2)<-levels(MetaData.merged$L2)
+
+# SpatialPlots (P1CRC as an example)
+Patient<-"P1CRC"
+
+BarcodeData<-split(MetaData.merged,MetaData.merged$Patient)
+BarcodeData<-BarcodeData[[Patient]]
+
+DF<-GenerateSampleData("~/VisiumHD/PatientCRC1/outs/")$bcs
+
+DF$Level1<-BarcodeData$L1[match(paste0(DF$barcode,paste0("_",Patient)),rownames(BarcodeData))]
+DF$Level1<-factor(DF$Level1,levels = sort(unique(DF$Level1)))
+
+DF$Level2<-BarcodeData$L2[match(paste0(DF$barcode,paste0("_",Patient)),rownames(BarcodeData))]
+DF$Level2<-factor(DF$Level2,levels = sort(unique(DF$Level2)))
+
+DF$DeconvolutionClass<-BarcodeData$DeconvolutionClass[match(paste0(DF$barcode,paste0("_",Patient)),rownames(BarcodeData))]
+DF$DeconvolutionL1<-BarcodeData$DeconvolutionLabel1[match(paste0(DF$barcode,paste0("_",Patient)),rownames(BarcodeData))]
+DF$DeconvolutionL1<-factor(DF$DeconvolutionL1,levels = sort(unique(DF$DeconvolutionL1)))
+
+DF$nCount_RNA<-BarcodeData$nCount_RNA[match(paste0(DF$barcode,paste0("_",Patient)),rownames(BarcodeData))]
+DF$nFeature_RNA<-BarcodeData$nFeature_RNA[match(paste0(DF$barcode,paste0("_",Patient)),rownames(BarcodeData))]
+
+
+PlotA<-DF  %>% filter(tissue==1) %>% 
+  ggplot(aes(x = imagecol_scaled, y = -imagerow_scaled,color=Level2)) +
+  geom_scattermore(pointsize = 3,pixels = rep(2000,2))+
   coord_cartesian(expand = FALSE) +
   xlab("") +
   ylab("") +
@@ -48,13 +211,13 @@ PlotCluster<-bcsHD  %>% filter(!is.na(Cluster)) %>%
   theme(axis.text = element_blank(),
         panel.grid.minor = element_blank(),
         panel.grid.major = element_blank())+
-  scale_color_manual(values=ColorsClusters()[14:39])+
-  labs(color="Cluster")+NoLegend()
+  scale_color_manual(values=ColorsExtra())+
+  labs(color="Level 2")+ggtitle("")+NoLegend()
 
-# Plot Deconvolution Results
-PlotDeconvolution<-bcsHD  %>% na.omit() %>%
-  ggplot(aes(x = imagecol_scaled, y = -imagerow_scaled,color=DeconvolutionLabel1)) +
-  geom_scattermore(pointsize = 2.5,pixels = rep(2000,2))+
+
+PlotB<-DF  %>% filter(tissue==1 & DeconvolutionClass == "singlet") %>% 
+  ggplot(aes(x = imagecol_scaled, y = -imagerow_scaled,color=DeconvolutionL1)) +
+  geom_scattermore(pointsize = 3,pixels = rep(2000,2))+
   coord_cartesian(expand = FALSE) +
   xlab("") +
   ylab("") +
@@ -64,41 +227,11 @@ PlotDeconvolution<-bcsHD  %>% na.omit() %>%
         panel.grid.minor = element_blank(),
         panel.grid.major = element_blank())+
   scale_color_manual(values=ColorPalette())+
-  labs(color="Cell Type")+NoLegend()
+  labs(color="Deconvolution")+ggtitle("")+NoLegend()
 
+PlotA/PlotB
 
-# A and B
-PlotCluster/PlotDeconvolution
-
-# C
-# Get clustering - deconvolution confusion matrix
-Mat<-prop.table(table(bcsHD$Cluster,bcsHD$DeconvolutionLabel1),margin=1)*100
-Mat[is.nan(Mat)]<-0
-
-HMCol<-colorRampPalette(c("white","firebrick1"))(50)
-
-AnnotColors<- list(Deconvolution = c('Tumor III'='#5050FFFF','Plasma'='#CE3D32FF','Macrophage'='#749B58FF','CD4 T cell'='#F0E685FF','CAF'='#466983FF','vSM'='#BA6338FF',
-                                     'Mature B'='#5DB1DDFF','Endothelial'='#802268FF','Tumor I'='#6BD76BFF','CD8 Cytotoxic T cell'='#D595A7FF','Enterocyte'='#924822FF',
-                                     'Neutrophil'='#837B8DFF','Proliferating Immune II'='#C75127FF','Pericytes'='#D58F5CFF','Smooth Muscle'='#7A65A5FF','Myofibroblast'='#E4AF69FF',
-                                     'Tumor II'='#3B1B53FF','Fibroblast'='#CDDEB7FF','Goblet'='#612A79FF','Lymphatic Endothelial'='#AE1F63FF','Tumor V'='#E7C76FFF',
-                                     'Proliferating Macrophages'='#5A655EFF','SM Stress Response'='#CC9900FF','NK'='#99CC00FF','cDC I'='#A9A9A9FF','Tumor IV'='#CC9900FF',
-                                     'Proliferating Fibroblast'='#99CC00FF','Epithelial'='#33CC00FF','Tuft'='#00CC33FF','Mast'='#00CC99FF',
-                                     'Unknown III (SM)'='#0099CCFF','Adipocyte'='#0A47FFFF','mRegDC'='#4775FFFF','Enteric Glial'='#FFC20AFF',
-                                     'pDC'='#FFD147FF','Vascular Fibroblast'='#990033FF','Neuroendocrine'='#991A00FF','Memory B'='#996600FF',
-                                     'Unknwon I (Immune)'='#809900FF'),
-                   Cluster = c('1'='#7F1786','2'='#EA3323','3'='#5DCBCF','4'='#F09235','5'='#FEFF54','6'='#B72D82','7'='#0C00C5','8'='#75FB4C','9'='#75FB8D','10'='#CA3142',
-                               '11'='#56BCF9','12'='#E8A76C','13'='#932CE7','14'='#BEFD5B','15'='#EA33F7','16'='#458EF7','17'='#CD7693','18'='#EEE697','19'='#EA8677','20'='#D4A2D9',
-                               '21'='#B6D7E4','22'='#7869E6','23'='#E087E8','24'='#AFF9A2','25'='#A0FBD6'))
-
-
-AnnotRow<-data.frame(Cluster=rownames(Mat))
-AnnotCol<-data.frame(Deconvolution=colnames(Mat))
-rownames(AnnotCol)<-AnnotCol$Deconvolution
-pheatmap(Mat,cluster_rows = T,color = HMCol,border_color = "black",annotation_colors = AnnotColors,annotation_col = AnnotCol,annotation_legend = FALSE,show_rownames = T,show_colnames = T,annotation_names_row = TRUE,annotation_names_col = FALSE,legend = FALSE)
-
-
-
-# D) Expression Zoom Ins
+# C) Expression Zoom Ins
 
 ### Here we list BC and gene relationship for zoom-ins
 
@@ -111,46 +244,46 @@ pheatmap(Mat,cluster_rows = T,color = HMCol,border_color = "black",annotation_co
 # Define center barcode for zoom ins
 Centers<-c("s_008um_00228_00549-1","s_008um_00530_00716-1","s_008um_00347_00358-1")
 
-bcsHD<-bcsHD %>% filter(tissue==1) %>% na.omit()
-  
+DF<-DF %>% filter(tissue==1) %>% na.omit()
+
 # Subset to barcodes in the bcDF data.frame
-SrtObj<-Load10X_Spatial(Sample_path, bin.size = 8)
-SrtObj<-subset(SrtObj,cells=bcsHD$barcode)
+SrtObj<-Load10X_Spatial("~/VisiumHD/PatientCRC1/", bin.size = 8)
+SrtObj<-subset(SrtObj,cells=DF$barcode)
 SrtObj<-NormalizeData(SrtObj)
-  
+
 # Add Expression values as columns to data.frame
-bcsHD<-AddExpression(bcsHD,SrtObj,c("PIGR","CEACAM6","COL1A1"))
-  
+DF<-AddExpression(DF,SrtObj,c("PIGR","CEACAM6","COL1A1"))
+
 # Use GetSquare to make a square cutout of the section. Each side will be 250 microns in length
 SliceA<-GetSquare(Centers[1],250,bcsHD)
 SliceB<-GetSquare(Centers[2],250,bcsHD)
 SliceC<-GetSquare(Centers[3],250,bcsHD)
-  
+
 # Define Square limits to be plotted as well
 DFRectA<-data.frame(Xmin=min(bcsHD$imagecol_scaled[match(SliceA,bcsHD$barcode)]),
-                      Xmax=max(bcsHD$imagecol_scaled[match(SliceA,bcsHD$barcode)]),
-                      Ymin=min(-bcsHD$imagerow_scaled[match(SliceA,bcsHD$barcode)]),
-                      Ymax=max(-bcsHD$imagerow_scaled[match(SliceA,bcsHD$barcode)]),
-                      imagecol_scaled=NA,
-                      image_row_scaled=NA)
-  
+                    Xmax=max(bcsHD$imagecol_scaled[match(SliceA,bcsHD$barcode)]),
+                    Ymin=min(-bcsHD$imagerow_scaled[match(SliceA,bcsHD$barcode)]),
+                    Ymax=max(-bcsHD$imagerow_scaled[match(SliceA,bcsHD$barcode)]),
+                    imagecol_scaled=NA,
+                    image_row_scaled=NA)
+
 DFRectB<-data.frame(Xmin=min(bcsHD$imagecol_scaled[match(SliceB,bcsHD$barcode)]),
-                      Xmax=max(bcsHD$imagecol_scaled[match(SliceB,bcsHD$barcode)]),
-                      Ymin=min(-bcsHD$imagerow_scaled[match(SliceB,bcsHD$barcode)]),
-                      Ymax=max(-bcsHD$imagerow_scaled[match(SliceB,bcsHD$barcode)]),
-                      imagecol_scaled=NA,
-                      image_row_scaled=NA)
-  
+                    Xmax=max(bcsHD$imagecol_scaled[match(SliceB,bcsHD$barcode)]),
+                    Ymin=min(-bcsHD$imagerow_scaled[match(SliceB,bcsHD$barcode)]),
+                    Ymax=max(-bcsHD$imagerow_scaled[match(SliceB,bcsHD$barcode)]),
+                    imagecol_scaled=NA,
+                    image_row_scaled=NA)
+
 DFRectC<-data.frame(Xmin=min(bcsHD$imagecol_scaled[match(SliceC,bcsHD$barcode)]),
-                      Xmax=max(bcsHD$imagecol_scaled[match(SliceC,bcsHD$barcode)]),
-                      Ymin=min(-bcsHD$imagerow_scaled[match(SliceC,bcsHD$barcode)]),
-                      Ymax=max(-bcsHD$imagerow_scaled[match(SliceC,bcsHD$barcode)]),
-                      imagecol_scaled=NA,
-                      image_row_scaled=NA)
-  
-  
+                    Xmax=max(bcsHD$imagecol_scaled[match(SliceC,bcsHD$barcode)]),
+                    Ymin=min(-bcsHD$imagerow_scaled[match(SliceC,bcsHD$barcode)]),
+                    Ymax=max(-bcsHD$imagerow_scaled[match(SliceC,bcsHD$barcode)]),
+                    imagecol_scaled=NA,
+                    image_row_scaled=NA)
+
+
 # Create All the Plots
 (PlotExpression(bcsHD,"PIGR",ptsize = 3)+geom_rect(aes(xmin=DFRectA$Xmin, xmax=DFRectA$Xmax, ymin=DFRectA$Ymax, ymax=DFRectA$Ymin),fill=NA,color="black")+NoLegend())+PlotExpression(bcsHD[bcsHD$barcode%in%SliceA,],"PIGR",ptsize = 4,shape="square")+
-    (PlotExpression(bcsHD,"CEACAM6",ptsize = 3)+geom_rect(aes(xmin=DFRectB$Xmin, xmax=DFRectB$Xmax, ymin=DFRectB$Ymax, ymax=DFRectB$Ymin),fill=NA,color="black")+NoLegend())+PlotExpression(bcsHD[bcsHD$barcode%in%SliceB,],"CEACAM6",ptsize = 4,shape="square")+
-    (PlotExpression(bcsHD,"COL1A1",ptsize = 3)+geom_rect(aes(xmin=DFRectC$Xmin, xmax=DFRectC$Xmax, ymin=DFRectC$Ymax, ymax=DFRectC$Ymin),fill=NA,color="black")+NoLegend())+PlotExpression(bcsHD[bcsHD$barcode%in%SliceC,],"COL1A1",ptsize = 4,shape="square")+plot_layout(ncol=2)
-  
+  (PlotExpression(bcsHD,"CEACAM6",ptsize = 3)+geom_rect(aes(xmin=DFRectB$Xmin, xmax=DFRectB$Xmax, ymin=DFRectB$Ymax, ymax=DFRectB$Ymin),fill=NA,color="black")+NoLegend())+PlotExpression(bcsHD[bcsHD$barcode%in%SliceB,],"CEACAM6",ptsize = 4,shape="square")+
+  (PlotExpression(bcsHD,"COL1A1",ptsize = 3)+geom_rect(aes(xmin=DFRectC$Xmin, xmax=DFRectC$Xmax, ymin=DFRectC$Ymax, ymax=DFRectC$Ymin),fill=NA,color="black")+NoLegend())+PlotExpression(bcsHD[bcsHD$barcode%in%SliceC,],"COL1A1",ptsize = 4,shape="square")+plot_layout(ncol=2)
+
