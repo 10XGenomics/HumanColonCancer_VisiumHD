@@ -85,7 +85,7 @@ spliced_probes
 plot_data_1a <-  per_probe_counts_unfiltered %>%
   spread(sample_name, probe_sum)
 plot_unfiltered_a <- plot_data_1a %>% 
-  ggplot(aes(x = log10(Visium_v2_p2) + 1, y = log10(Visium_HD_p2)+1)) +
+  ggplot(aes(x = log10(Visium_v2_p2 + 1), y = log10(Visium_HD_p2+1))) +
   geom_point(color = "#990F20") +
   geom_smooth(method='lm', se = FALSE) +
   stat_cor(data = plot_data_1a, color = "black",
@@ -107,7 +107,7 @@ plot_data_2a <-  per_probe_counts_unfiltered %>%
   spread(sample_name, probe_sum) %>% 
   filter(probe %in% spliced_probes)
 plot_spliced_a <- plot_data_2a %>% 
-  ggplot(aes(x = log10(Visium_v2_p2) + 1, y = log10(Visium_HD_p2)+1)) +
+  ggplot(aes(x = log10(Visium_v2_p2 + 1), y = log10(Visium_HD_p2+1))) +
   geom_point(color = "#990F20") +
   geom_smooth(method='lm', se = FALSE) +
   stat_cor(data = plot_data_2a, color = "black",
@@ -131,7 +131,7 @@ highres_sup_fig1a <- plot_unfiltered_a +  plot_spliced_a
 plot_data_1b <-  per_probe_counts_unfiltered %>%
   spread(sample_name, probe_sum)
 plot_unfiltered_b <- plot_data_1b %>% 
-  ggplot(aes(x = log10(Visium_v2_p5) + 1, y = log10(Visium_HD_p5)+1)) +
+  ggplot(aes(x = log10(Visium_v2_p5 + 1), y = log10(Visium_HD_p5+1))) +
   geom_point(color = "#990F20") +
   geom_smooth(method='lm', se = FALSE) +
   stat_cor(data = plot_data_1b, color = "black",
@@ -153,7 +153,7 @@ plot_data_2b <-  per_probe_counts_unfiltered %>%
   spread(sample_name, probe_sum) %>% 
   filter(probe %in% spliced_probes)
 plot_spliced_b <- plot_data_2b %>% 
-  ggplot(aes(x = log10(Visium_v2_p5) + 1, y = log10(Visium_HD_p5)+1)) +
+  ggplot(aes(x = log10(Visium_v2_p5 + 1), y = log10(Visium_HD_p5+1))) +
   geom_point(color = "#990F20") +
   geom_smooth(method='lm', se = FALSE) +
   stat_cor(data = plot_data_2b, color = "black",
