@@ -121,7 +121,7 @@ Level2Clusters<-data.frame(ID=sort(unique(MetaDataSubClusters$Level2)),
                                    'CAF','Fibroblast','Pericytes','Fibroblast','Myofibroblast','Fibroblast','Unknown III (SM)','CAF','Adipocyte',
                                    'Goblet','Goblet','Goblet','Macrophage','Neutrophil','Macrophage','Mast','Macrophage','mRegDC','pDC',
                                    'Enteric Glial','Neuroendocrine','Enteric Glial','Enteric Glial','Tuft','Epithelial','Smooth Muscle',
-                                   'SM Stress Response','vSM','Unknown III (SM)','SM Stress Response','Enterocyte','CD4 T cell','CD8 Cytotoxic T cell',
+                                   'SM Stress Response','vSM','Unknown III (SM)','SM Stress Response','Enterocyte','CD4 T cell','CD8 T cell',
                                    'CD4 T cell','CD4 T cell','Tumor I','Tumor III','Tumor IV','Tumor II','Tumor V','Proliferating Immune II'))
                            
 MetaDataSubClusters$Level2<-Level2Clusters$Label[match(MetaDataSubClusters$Level2,Level2Clusters$ID)]

@@ -54,7 +54,7 @@ for(index in 1:nrow(SampleData))
   bcsHD$Periphery[is.na(bcsHD$Periphery)]<-"Tissue"
   bcsHD$Periphery[bcsHD$Periphery=="Tissue" & bcsHD$DeconvolutionLabel1==TumorCluster]<-"Tumor"
   
-  bcsHD <- bcsHD %>% filter(tissue=="1" & DeconvolutionLabel1%in%c("CD4 T cell","CD8 Cytotoxic T cell") & Periphery %in% c("50 micron","Tissue"))
+  bcsHD <- bcsHD %>% filter(tissue=="1" & DeconvolutionLabel1%in%c("CD4 T cell","CD8 T cell") & Periphery %in% c("50 micron","Tissue"))
   
   bcsHD<-split(bcsHD,bcsHD$Periphery)
   

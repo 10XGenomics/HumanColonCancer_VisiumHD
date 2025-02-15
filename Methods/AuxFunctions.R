@@ -92,7 +92,7 @@ get_spatial_files<-function (PATH, type)
 ColorPalette<-function()
 {
   Colors<-c(paletteer::paletteer_d("ggsci::default_igv")[1:39],"black","azure4")
-  names(Colors)<-c('Tumor III','Plasma','Macrophage','CD4 T cell','CAF','vSM','Mature B','Endothelial','Tumor I','CD8 Cytotoxic T cell',
+  names(Colors)<-c('Tumor III','Plasma','Macrophage','CD4 T cell','CAF','vSM','Mature B','Endothelial','Tumor I','CD8 T cell',
                    'Enterocyte','Neutrophil','Proliferating Immune II','Pericytes','Smooth Muscle','Myofibroblast',
                    'Tumor II','Fibroblast','Goblet','Lymphatic Endothelial','Tumor V','Proliferating Macrophages','SM Stress Response',
                    'NK','cDC I','Tumor IV','Proliferating Fibroblast','Epithelial','Tuft','Mast','Unknown III (SM)',

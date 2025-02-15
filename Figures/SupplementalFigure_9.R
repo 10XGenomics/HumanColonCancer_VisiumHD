@@ -113,7 +113,7 @@ bcDF$DeconvolutionLabel1[match(TypeInfo[[2]],bcDF$barcode)]<-paste0("Macrophage 
 
 # Custom function to plot colocalization of macrophages and T cells
 
-Plot1<-PlotColocalization(bcDF,"CD8 Cytotoxic T cell",c("Macrophage SELENOP+","Macrophage SPP1+"),
+Plot1<-PlotColocalization(bcDF,"CD8 T cell",c("Macrophage SELENOP+","Macrophage SPP1+"),
                           Tumor=TumorCluster,BarcodeSet=bcDF$barcode[bcDF$Periphery=="50 micron"],option = "CD8")
 
 Plot2<-PlotColocalization(bcDF,"CD4 T cell",c("Macrophage SELENOP+","Macrophage SPP1+"),

@@ -449,7 +449,7 @@ for(Patient in SampleData$Patient)
   liana_result$Patient<-Patient
   AllResults[[Patient]]<-liana_result
   
-  CTxs<-c("Macrophage_SPP1+","Macrophage_SELENOP+","CD4 T cell","CD8 Cytotoxic T cell",SampleInfo$Tumor[SampleInfo$Sample==Patient])
+  CTxs<-c("Macrophage_SPP1+","Macrophage_SELENOP+","CD4 T cell","CD8 T cell",SampleInfo$Tumor[SampleInfo$Sample==Patient])
   
   # Interaction Graph
   PlotB[[Patient]]<-PlotInteractionGraph(liana_result,CellTypes = CTxs,
@@ -473,13 +473,13 @@ CC_Result$target[iix]<-"Tumor"
 
 CC_Result  %>%
   liana_dotplot(source_groups = c("Macrophage_SPP1+"),
-                target_groups = c("CD8 Cytotoxic T cell","CD4 T cell","Tumor"),ntop = 50)+
+                target_groups = c("CD8 T cell","CD4 T cell","Tumor"),ntop = 50)+
   facet_grid(~Patient)+ggtitle("Macrophage SPP1+")
 
 
 CC_Result  %>%
   liana_dotplot(source_groups = c("Macrophage_SELENOP+"),
-                target_groups = c("CD8 Cytotoxic T cell","CD4 T cell","Tumor"),ntop = 50)+
+                target_groups = c("CD8 T cell","CD4 T cell","Tumor"),ntop = 50)+
   facet_grid(~Patient)+ggtitle("Macrophage SELENOP+")
 
 
