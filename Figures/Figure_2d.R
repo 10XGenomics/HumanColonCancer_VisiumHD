@@ -85,7 +85,7 @@ spliced_probes
 plot_data_1 <-  per_probe_counts_unfiltered %>%
   spread(sample_name, probe_sum)
 plot_unfiltered <- plot_data_1 %>% 
-  ggplot(aes(x = log10(Visium_v2) + 1, y = log10(Visium_HD)+1)) +
+  ggplot(aes(x = log10(Visium_v2 + 1), y = log10(Visium_HD+1))) +
   geom_point(color = "#990F20") +
   geom_smooth(method='lm', se = FALSE) +
   stat_cor(data = plot_data_1, color = "black",
@@ -99,7 +99,7 @@ plot_unfiltered <- plot_data_1 %>%
   ggtitle(glue("P3 NAT Unfiltered"))+
   xlim(0,7) +
   ylim(0,7) +
-  theme_bw()+
+  theme_classic()+
   easy_all_text_size(size = 20)
 
 
@@ -107,7 +107,7 @@ plot_data_2 <-  per_probe_counts_unfiltered %>%
   spread(sample_name, probe_sum) %>% 
   filter(probe %in% spliced_probes)
 plot_spliced <- plot_data_2%>% 
-  ggplot(aes(x = log10(Visium_v2) + 1, y = log10(Visium_HD)+1)) +
+  ggplot(aes(x = log10(Visium_v2 + 1), y = log10(Visium_HD+1))) +
   geom_point(color = "#990F20") +
   geom_smooth(method='lm', se = FALSE) +
   stat_cor(data = plot_data_2, color = "black",
@@ -121,7 +121,7 @@ plot_spliced <- plot_data_2%>%
   ggtitle(glue("P3 NAT Spliced Probes"))+
   xlim(0,7) +
   ylim(0,7) +
-  theme_bw() +
+  theme_classic() +
   easy_all_text_size(size = 20)
 
 highres_fig2 <- plot_unfiltered +  plot_spliced
