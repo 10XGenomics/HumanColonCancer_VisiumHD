@@ -35,7 +35,7 @@ Result<-vector("list",length=nrow(SampleData))
 names(Result)<-SampleData$Patient
 for(index in 1:nrow(SampleData))
 {
-  bcsHD<-GenerateSampleData(Sample_path)$bcs
+  bcsHD<-GenerateSampleData(SampleData$PathSR[index])$bcs
   DeconvolutionHD<-readRCTD(SampleData$PathDeconvolution[index])
   bcsHD<-AddDeconvolutionInfo(bcsHD,DeconvolutionHD,AddWeights=FALSE)
   
@@ -53,7 +53,7 @@ for(index in 1:nrow(SampleData))
   bcsHD$Periphery<-NA
   bcsHD$Periphery[bcsHD$barcode%in%PeripheryBCs]<-"50 micron"
   bcsHD$Periphery[is.na(bcsHD$Periphery)]<-"Tissue"
-  bcsHD$Periphery[bcsHD$Periphery=="Tissue" & bcsHD$DeconvolutionLabel1==TumorCluster]<-"Tumor"
+  bcsHD$Periphery[bcsHD$Periphery=="Tissue" & bcsHD$DeconvolutionLabel1==SampleData$Tumor[index]]<-"Tumor"
   
   
   Ix<-as.data.frame(prop.table(table(bcsHD$Periphery,bcsHD$DeconvolutionClass),margin=1)*100)
@@ -64,16 +64,18 @@ for(index in 1:nrow(SampleData))
 }
 
 # Calculate mean and SD for each class to make the barplot with errorbars
-Result<-rbind(Result %>% filter(Var2=="reject") %>% dplyr::group_by(Var1) %>% dplyr::summarise(MD=mean(Freq),SD=sd(Freq),Group="reject"),
+# Calculate mean and SD for each class to make the barplot with errorbars
+Result2<-rbind(Result %>% filter(Var2=="reject") %>% dplyr::group_by(Var1) %>% dplyr::summarise(MD=mean(Freq),SD=sd(Freq),Group="reject"),
               Result %>% filter(Var2=="doublet_uncertain") %>% dplyr::group_by(Var1) %>% dplyr::summarise(MD=mean(Freq),SD=sd(Freq),Group="doublet_uncertain"),
               Result %>% filter(Var2=="doublet_certain") %>% dplyr::group_by(Var1) %>% dplyr::summarise(MD=mean(Freq),SD=sd(Freq),Group="doublet_certain"),
               Result %>% filter(Var2=="singlet") %>% dplyr::group_by(Var1) %>% dplyr::summarise(MD=mean(Freq),SD=sd(Freq),Group="singlet"))
 
 
-Result$Group<-factor(Result$Group,levels = c("singlet","doublet_certain","doublet_uncertain","reject"))
-ggplot(Result, aes(x=Group, y=MD, fill=Var1)) + geom_bar(stat="identity", color="black", position=position_dodge())+ 
+Result2$Group<-factor(Result2$Group,levels = c("singlet","doublet_certain","doublet_uncertain","reject"))
+
+ggplot(Result2, aes(x=Group, y=MD, fill=Var1)) + geom_bar(stat="identity", color="black", position=position_dodge())+
   geom_errorbar(aes(ymin=MD-SD, ymax=MD+SD), width=.2,position=position_dodge(.9)) +scale_fill_manual(values=c("dodgerblue","lightgray","firebrick1"))+
-  theme_classic()+xlab("") + ylab("Proportion (%)")+labs(fill="Group")
+  theme_classic()+xlab("") + ylab("Proportion (%)")+labs(fill="Group")+geom_point(data=Result,aes(x=Var2,y=Freq),position = position_dodge(width = .9))
 
 
 
