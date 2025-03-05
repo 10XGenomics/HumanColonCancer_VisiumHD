@@ -99,7 +99,7 @@ plot_unfiltered_a <- plot_data_1a %>%
   ggtitle(glue("P2 NAT Unfiltered"))+
   xlim(0,7) +
   ylim(0,7) +
-  theme_bw()+
+  theme_classic()+
   easy_all_text_size(size = 20)
 
 
@@ -121,7 +121,7 @@ plot_spliced_a <- plot_data_2a %>%
   ggtitle(glue("P2 NAT Spliced Probes"))+
   xlim(0,7) +
   ylim(0,7) +
-  theme_bw() +
+  theme_classic() +
   easy_all_text_size(size = 20)
 
 highres_sup_fig1a <- plot_unfiltered_a +  plot_spliced_a
@@ -145,7 +145,7 @@ plot_unfiltered_b <- plot_data_1b %>%
   ggtitle(glue("P5 NAT Unfiltered"))+
   xlim(0,7) +
   ylim(0,7) +
-  theme_bw()+
+  theme_classic()+
   easy_all_text_size(size = 20)
 
 
@@ -167,7 +167,7 @@ plot_spliced_b <- plot_data_2b %>%
   ggtitle(glue("P5 NAT Spliced Probes"))+
   xlim(0,7) +
   ylim(0,7) +
-  theme_bw() +
+  theme_classic() +
   easy_all_text_size(size = 20)
 
 highres_sup_fig1b <- plot_unfiltered_b +  plot_spliced_b
