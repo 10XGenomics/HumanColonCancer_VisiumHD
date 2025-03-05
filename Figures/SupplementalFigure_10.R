@@ -177,7 +177,7 @@ pfumi_df <- pfumi %>% list_flatten() %>% bind_rows(.id = "sample")
     ggtitle(glue::glue("P1 CRC"))+
     xlim(0,7) +
     ylim(0,7) +
-    theme_bw() + 
+    theme_classic() + 
     ggeasy::easy_all_text_size(size = 20)
 
 ## P2
@@ -203,7 +203,7 @@ pfumi_df <- pfumi %>% list_flatten() %>% bind_rows(.id = "sample")
     ggtitle(glue::glue("p2 CRC"))+
     xlim(0,7) +
     ylim(0,7) +
-    theme_bw() + 
+    theme_classic() + 
     ggeasy::easy_all_text_size(size = 20)
 
 
@@ -230,6 +230,6 @@ pfumi_df <- pfumi %>% list_flatten() %>% bind_rows(.id = "sample")
     ggtitle(glue::glue("P5 CRC"))+
     xlim(0,7) +
     ylim(0,7) +
-    theme_bw() + 
+    theme_classic() + 
     ggeasy::easy_all_text_size(size = 20)
 
