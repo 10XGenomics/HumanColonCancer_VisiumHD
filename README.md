@@ -132,8 +132,9 @@ These parquet files contain the following columns:
 6. *DeconvolutionLabel1* : Gives the first cell type predicted on the bin
 7. *DeconvolutionLabel2* : Gives the second cell type predicted on the bin (Not valid for reject or doublet_uncertain)
 8. *Periphery* : Indicates if the bin is in the 50 micron tumor periphery, in the tumor or rest of the tissue
-8. *UnsupervisedL1* : Merged unsupervised clusering annotation (Level 1)
-8. *UnsupervisedL2* : Merged unsupervised clusering annotation (Level 2)
+9. *UnsupervisedL1* : Merged unsupervised clusering annotation (Level 1)
+10. *UnsupervisedL2* : Merged unsupervised clusering annotation (Level 2)
+11. *MacrophageSubtype* : Subtype of macrophage (SELENOP+ or SPP1+) in the tumor periphery
 
 
 ## Figures
