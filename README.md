@@ -135,6 +135,7 @@ These parquet files contain the following columns:
 9. *UnsupervisedL1* : Merged unsupervised clusering annotation (Level 1)
 10. *UnsupervisedL2* : Merged unsupervised clusering annotation (Level 2)
 11. *MacrophageSubtype* : Subtype of macrophage (SELENOP+ or SPP1+) in the tumor periphery
+12. *GobletSubcluster* : Goblet subcluster used in Figure 5
 
 
 ## Figures
