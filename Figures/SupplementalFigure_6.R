@@ -231,6 +231,10 @@ rownames(AnnotCol)<-colnames(ConfusionMatrix)
 ColorsAnnotation<-list(CellType=ColorPalette(),Level1=ColsL1,Level2=ColorsExtra())
 names(ColorsAnnotation$Level1)<-gsub(" ","",names(ColorsAnnotation$Level1))
 
+ColorsAnnotation$Level1<-c(ColorsAnnotation$Level1,"lightgray")
+names(ColorsAnnotation$Level1)[10]<-"Unknown"
+
+
 ColorHM<-colorRampPalette(c("white","red"))(25)
 
 pheatmap(ConfusionMatrix,annotation_row = AnnotRow,annotation_col = AnnotCol,color=ColorHM,
