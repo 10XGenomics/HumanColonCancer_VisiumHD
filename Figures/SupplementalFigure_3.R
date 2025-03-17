@@ -20,38 +20,62 @@ library(enrichR)
 # load aux functions
 source("~/Methods/AuxFunctions.R")
 
-# Create data.frame with Patient information 
-SampleData<-data.frame(Patient = c("P1CRC","P2CRC","P5CRC"),
-                       PathSR=c("~/VisiumHD/PatientCRC1/outs/","~/VisiumHD/PatientCRC2/outs/","~/VisiumHD/PatientCRC5/outs/"),
-                       PathDeconvolution=c("~/Outputs/Deconvolution/PatientCRC1_Deconvolution_HD.rds","~/Outputs/Deconvolution/PatientCRC2_Deconvolution_HD.rds","~/Outputs/Deconvolution/PatientCRC5_Deconvolution_HD.rds"),
-                       PathPeriphery=c("~/Outputs/Periphery/P1CRC_TME_Barcodes.rds","~/Outputs/Periphery/P2CRC_TME_Barcodes.rds","~/Outputs/Periphery/P5CRC_TME_Barcodes.rds"),
-                       Tumor = c("Tumor III","Tumor II","Tumor IV"))
+
+# Read single cell MetaData 
+MetaData<-read.csv('SingleCell_MetaData.csv.gz') %>% filter(QCFilter=="Keep")
+MetaData$Level1<-factor(MetaData$Level1,levels = sort(unique(MetaData$Level1)))
+MetaData$Level2<-factor(MetaData$Level2,levels = sort(unique(MetaData$Level2)))
+MetaData$Condition<-gsub("P[0-9]","",MetaData$Patient)
+MetaData$PatientID<-substr(MetaData$Patient,1,2)
+
+# Create color palettes
+ColsL1<-paletteer::paletteer_d("ggsci::default_igv")[1:length(levels(MetaData$Level1))]
+names(ColsL1)<-levels(MetaData$Level1)
+
+ColsL2<-ColorPalette()
+
+# Level 1 Proportion Plot
+ProportionsL1<-as.data.frame(table(MetaData$Level1))
+ProportionsL1<-ProportionsL1[order(ProportionsL1$Freq),]
+ProportionsL1$Var1<-factor(ProportionsL1$Var1,levels = ProportionsL1$Var1)
+ProportionsL1_Plot<-ggplot(ProportionsL1,aes(x=Var1,y=Freq,fill=Var1))+geom_bar(stat="identity")+coord_flip()+theme_classic()+
+  geom_text(aes(label=Freq), hjust = 1)+scale_fill_manual(values=ColsL1)+NoLegend()+xlab("")+ylab("Frequency")
 
 
-# Deconolution Labels Proportions
-Result<-vector("list",length=nrow(SampleData))
-names(Result)<-SampleData$Patient
-for(index in 1:nrow(SampleData))
-{
-  bcsHD<-GenerateSampleData(SampleData$PathSR[index])$bcs
-  DeconvolutionHD<-readRCTD(SampleData$PathDeconvolution[index])
-  bcsHD<-AddDeconvolutionInfo(bcsHD,DeconvolutionHD,AddWeights=FALSE)
-  
-  bcsHD <- bcsHD %>% filter(tissue=="1" & DeconvolutionClass=="singlet")
-  
-  Ix<-as.data.frame(prop.table(table(bcsHD$DeconvolutionLabel1))*100)
-  Ix$Patient<-SampleData$Patient[index]
-  
-  Result<-rbind(Result,Ix)
-  
-}
+# Label Positions for UMAP Aggr'd dataset
+LabelCoords_L1<-MetaData %>% group_by(Level1) %>% summarise(UM1 = median(UMAP1, na.rm = TRUE),
+                                                            UM2 = median(UMAP2, na.rm = TRUE))
 
-# Order factors
-Levels<-Result %>% group_by(Var1) %>% summarise(Value=mean(Freq))
-Levels<-Levels[order(Levels$Value,decreasing = T),]
-Result$Var1<-factor(Result$Var1,levels = Levels$Var1)
+LabelCoords_L2<-MetaData %>% group_by(Level2) %>% summarise(UM1 = median(UMAP1, na.rm = TRUE),
+                                                            UM2 = median(UMAP2, na.rm = TRUE))
 
-# Draw Plot
-ggplot(Result,aes(x=Var1,y=Freq,fill=Patient))+geom_bar(stat="identity",position = "dodge")+scale_fill_manual(values=c("#FB6222","#17AB6F","#572D86"))+
-  theme_classic()+xlab("Cell Type")+ylab("Proportion (%)")+theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust=1))
+# Level 1 UMAP plot
+Level1UMAP<-MetaData %>% filter(QCFilter=="Keep") %>% ggplot(aes(x=UMAP1,y=UMAP2,color=Level1))+
+  geom_scattermore(pointsize = 2,pixels = rep(2000,2))+theme_classic()+
+  scale_color_manual(values=ColsL1)+xlab("")+ylab("")+NoLegend()+
+  geom_text_repel(data=LabelCoords_L1,aes(x=UM1,y=UM2,label=Level1),fontface='bold',col="black")+
+  theme(axis.text = element_blank(),panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),panel.background = element_blank(), 
+        axis.line = element_blank(),axis.ticks = element_blank())+
+  ggtitle("Flex Single cell",subtitle = "Level 1 Annotations")
 
+ProportionsL1_Plot + Level1UMAP
+
+# Level 2 UMAP plot
+Level2UMAP<-MetaData %>% filter(QCFilter=="Keep") %>% ggplot(aes(x=UMAP1,y=UMAP2,color=Level2))+
+  geom_scattermore(pointsize = 2,pixels = rep(2000,2))+theme_classic()+
+  scale_color_manual(values=ColsL2)+xlab("")+ylab("")+NoLegend()+
+  geom_text_repel(data=LabelCoords_L2,aes(x=UM1,y=UM2,label=Level2),fontface="bold",col="black")+
+  theme(axis.text = element_blank(),panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),panel.background = element_blank(), 
+        axis.line = element_blank(),axis.ticks = element_blank())+
+  ggtitle("Flex Single cell",subtitle = "Level 2 Annotations")
+
+# UMAP plots by Condition (rows) and Patient (columns)
+MetaData %>% ggplot(aes(x=UMAP1,y=UMAP2,color=Level2))+
+  geom_scattermore(pointsize = 4,pixels = rep(2000,2))+theme_classic()+
+  scale_color_manual(values=ColsL2)+xlab("")+ylab("")+NoLegend()+
+  theme(axis.text = element_blank(),panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),panel.background = element_blank(), 
+        axis.line = element_blank(),axis.ticks = element_blank())+
+  facet_grid(cols = vars(PatientID),rows = vars(Condition))

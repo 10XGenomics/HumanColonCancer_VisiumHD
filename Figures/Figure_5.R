@@ -28,11 +28,10 @@ SampleData<-data.frame(Patient = c("P1CRC","P2CRC","P5CRC"),
                        PathSR=c("~/VisiumHD/PatientCRC1/outs/","~/VisiumHD/PatientCRC2/outs/","~/VisiumHD/PatientCRC5/outs/"),
                        PathDeconvolution=c("~/Outputs/Deconvolution/PatientCRC1_Deconvolution_HD.rds","~/Outputs/Deconvolution/PatientCRC2_Deconvolution_HD.rds","~/Outputs/Deconvolution/PatientCRC5_Deconvolution_HD.rds"),
                        PathPeriphery=c("~/Outputs/Periphery/P1CRC_TME_Barcodes.rds","~/Outputs/Periphery/P2CRC_TME_Barcodes.rds","~/Outputs/Periphery/P5CRC_TME_Barcodes.rds"),
-                       Tumor = c("Tumor III","Tumor II","Tumor IV"))
-
+                       Tumor = c("Tumor II","Tumor III","Tumor IV"))
 
 # List to save plots
-ResultPlot<-vector("list",length=length(BarcodeDF))
+ResultPlot<-vector("list",length=length(SampleData))
 
 # Variables to store Combined Results
 CombRes<-c()
@@ -61,7 +60,7 @@ for(index in 1:nrow(SampleData))
   bcDF <- bcsHD %>% filter(tissue==1 & DeconvolutionClass=="singlet") %>% na.omit()
   
   # Create used variables (Patient ID and Tumor Cluster)
-  Patient<-names(BarcodeDF)[index]
+  Patient<-SampleData$Patient[index]
   TumorCluster<-SampleData$Tumor[index]
   
   # Detect Tumor microenviroment (barcodes within 50 microns of tumor)
@@ -122,15 +121,6 @@ for(index in 1:nrow(SampleData))
     #Result data.frame with barcodes, macrophage type and Patient. To be used when combining the objects
     CombRes<-rbind(CombRes,data.frame(BC=bcDF$barcode[iix],CT=bcDF$DeconvolutionLabel1[iix],Patient=SampleData$Patient[index]))
     
-    # Density plots to identify Macrophage enriched regions in the TME
-    DensityPlot1<-PlotDensity(bcDF,"Macrophage-SELENOP+",nBins = 4,Tumor = TumorCluster,
-                              BarcodeSet = bcDF$barcode[bcDF$Periphery=="50 micron"])
-    
-    DensityPlot2<-PlotDensity(bcDF,"Macrophage-SPP1+",nBins = 4,Tumor = TumorCluster,
-                              BarcodeSet = bcDF$barcode[bcDF$Periphery=="50 micron"])
-    
-    # Save Plots
-    ResultPlot[[index]]<-DensityPlot1+DensityPlot2+plot_layout(ncol=1)
     
     # Obtain the barcodes within the enriched regions 
     RegionsSPP1<-SelectEnrichedRegion("Macrophage-SPP1+",bcDF[bcDF$barcode%in%PeripheryBCs,],SampleData$PathSR[index],Area = 350,N = 1)[[1]]
@@ -161,12 +151,6 @@ for(index in 1:nrow(SampleData))
     #Result data.frame with barcodes, macrophage type and Patient. To be used when combining the objects
     CombRes<-rbind(CombRes,data.frame(BC=bcDF$barcode[iix],CT=bcDF$DeconvolutionLabel1[iix],Patient=SampleData$Patient[index]))
     
-    # Density plots to identify Macrophage enriched regions in the TME
-    DensityPlot1<-PlotDensity(bcDF,"Macrophage-SELENOP+",nBins = 5,Tumor = TumorCluster,BarcodeSet = bcDF$barcode[bcDF$Periphery=="50 micron"])
-    
-    # Save Plots
-    ResultPlot[[index]]<-DensityPlot1+plot_layout(ncol=1)
-    
     # Obtain the barcodes within the enriched regions 
     RegionsSELENOP<-SelectEnrichedRegion("Macrophage-SELENOP+",bcDF[bcDF$barcode%in%PeripheryBCs,],PATH=SampleData$PathSR[index],Area = 350,N = 1)[[1]]
     
@@ -185,11 +169,6 @@ for(index in 1:nrow(SampleData))
   }
   
 }
-
-# Plot Macrophage Density Estimations for each patient
-ResultPlot[[1]]
-ResultPlot[[2]]
-ResultPlot[[3]]
 
 # Using the combined data.frames we will re-create Seurat Objects and merge
 CombRes<-split(CombRes,CombRes$Patient)
@@ -215,22 +194,9 @@ Combined<-SetIdent(Combined,value="CellType")
 CtMarkers<-FindAllMarkers(Combined,logfc.threshold = 0.1,min.diff.pct = 0.1,only.pos = T)
 CtMarkers<-CtMarkers[CtMarkers$p_val_adj<0.05,]
 
-# Get top 10 DEGs for each macrophage subpopulation
-Genes<-CtMarkers %>% group_by(cluster) %>% arrange(-avg_log2FC) %>% slice(1:10) %>% pull(gene)
-
-# Seurat DotPlot, we will use the data to make a customized version
-Plot<-DotPlot(Combined,features = unique(Genes),dot.min = 0.15,idents=levels(CtMarkers$cluster),split.by = "Patient",cols = c("blue","red","green"))
-Plot<-Plot$data
-Plot<- Plot %>% na.omit()
-Plot$LogExp<-log1p(Plot$avg.exp)
-
-# Dot Plot Gene Expression
-ggplot(Plot,aes(x=features.plot,y=id,size=pct.exp,color=LogExp))+geom_point()+coord_flip()+
-  theme_classic()+scale_colour_viridis(limits=c(0,7))+theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
-  xlab("")+ylab("Subpopulation")+guides(size = guide_legend(title = "Percentage Expressed"),color = guide_colorbar(title = "log Mean Expression"))
-
 # Barplot with Enrichment based on the found Markers
-EnrichRBarPlot(CtMarkers,"MSigDB_Hallmark_2020",TermsX = 10)
+# A)
+EnrichRBarPlot(CtMarkers,"MSigDB_Hallmark_2020",TermsX = 15,colsT=c("#01702E","#D35D05"))
 
 # Same as before, but this time with the Tumor 
 CombResTumor<-split(CombResTumor,CombResTumor$Patient)
@@ -257,25 +223,263 @@ CtMarkers<-FindAllMarkers(Combined,logfc.threshold = 0.1,min.diff.pct = 0.1,only
 CtMarkers<-CtMarkers[CtMarkers$p_val_adj<0.05,]
 
 # Create Plots
-PlotsExp<-vector("list",length=3)
-for(jj in 1:length(BarcodeDF))
+GenesCluster<-CtMarkers %>% group_by(cluster) %>% arrange(p_val_adj) %>% slice_head(n=5) %>% pull(gene)
+
+ExpData<-FetchData(Combined,GenesCluster)
+
+TumorPlotData<-cbind(Combined@meta.data[,4:5],ExpData)
+
+TumorPlotData<-melt(TumorPlotData)
+
+# B)
+TumorPlotData %>% ggplot(aes(x=CellType,y=value,fill=Patient))+geom_violin(scale = "width")+facet_wrap(~variable,ncol = 5) + theme_classic() +
+  scale_fill_manual(values=c("darkorange2","darkcyan","darkslateblue"))
+
+
+
+## Goblet Cell Analysis
+
+MatZ<-vector("list",length=nrow(SampleData))
+
+for(jj in 1:nrow(SampleData))
 {
+  # Generate sample data.frame
+  Sample_path <- SampleData$PathSR[jj]
+  TumorCluster<-SampleData$Tumor[jj]
+  DataHD<-GenerateSampleData(Sample_path)
+  bcsHD<-DataHD$bcs
   
-  bcDF<-BarcodeDF[[jj]]
-  bcDF <- bcDF %>% filter(tissue==1 ) %>% na.omit()
+  # Read Deconvolution results and add to DF
+  DeconvolutionHD<-readRCTD(SampleData$PathDeconvolution[jj])
+  bcsHD<-AddDeconvolutionInfo(bcsHD,DeconvolutionHD,AddWeights=FALSE)
   
-  SeuratObj <- SeuratObjects[[jj]]
-  SeuratObj<-subset(SeuratObj,cells=bcDF$barcode)
-  SeuratObj<-NormalizeData(SeuratObj)
+  # Filter data.frame to keep bins within tissues and are singlets (only 1 cell type)
+  bcDF <- bcsHD %>% filter(tissue==1 & DeconvolutionClass=="singlet") %>% na.omit()
+  BcsX <- bcDF %>% filter(DeconvolutionLabel1=="Goblet") %>% pull(barcode)
   
-  bcDF<-AddExpression(bcDF,SeuratObj,c("REG1B","REG3A","REG1A","TGFBI"))
-  Pa<-PlotExpression(bcDF,"REG1A",ptsize = 2.25)+scale_color_gradient(low = "lightgray",high = "firebrick1")
-  Pb<-PlotExpression(bcDF,"TGFBI",ptsize = 2.25)+scale_color_gradient(low = "lightgray",high = "firebrick1")
   
-  PlotsExp[[jj]]<-Pa+Pb+plot_layout(ncol=1)
+  Cnts<-Read10X_h5(paste0(SampleData$PathSR[jj],"/binned_outputs/square_008um/filtered_feature_bc_matrix.h5"))[,BcsX]
+  colnames(Cnts)<-paste0(colnames(Cnts),"-",SampleData$Patient[jj])
+  
+  MatZ[[jj]]<-Cnts
+  
 }
 
-# Draw Plots
-PlotsExp[[1]]
-PlotsExp[[2]]
-PlotsExp[[3]]
+Counts<-do.call(cbind,MatZ)
+
+GobletObj<-CreateSeuratObject(Counts)
+GobletObj<-NormalizeData(GobletObj)
+GobletObj<-FindVariableFeatures(GobletObj)
+GobletObj<-ScaleData(GobletObj)
+GobletObj<-RunPCA(GobletObj)
+GobletObj<-FindNeighbors(GobletObj,dims=1:12)
+GobletObj<-FindClusters(GobletObj,resolution=0.2)
+
+Mks<-FindAllMarkers(GobletObj,logfc.threshold = 0.1,min.diff.pct = 0.1,only.pos = T) %>% filter(p_val_adj<0.05)
+
+GobletMD<-GobletObj@meta.data
+GobletMD$Barcode<-paste0(sapply(strsplit(rownames(GobletMD),"-"),function(X){return(X[1])}),"-1")
+GobletMD$Patient<-sapply(strsplit(rownames(GobletMD),"-"),function(X){return(X[3])})
+GobletMD$FinalCluster<-paste0("Goblet-",GobletMD$seurat_clusters)
+GobletMD$FinalCluster<-factor(GobletMD$FinalCluster,levels = sort(unique(GobletMD$FinalCluster)))
+
+# C)
+DotPlot(GobletObj,c("MUC2","FCGBP","TFF3","CLCA1","OLFM4","DUOX2","DMBT1","REG1A","REG1B"),dot.min = 0.05)+coord_flip()+
+  scale_color_gradient2(low="dodgerblue",mid = "white",high = "firebrick1",limits=c(-2.5,2.5))
+
+ColorsX<-c("#CA3142","#F09235","#FEFF54","#0C00C5","#60B177","#EEE697","#74140C")
+
+AllP1<-vector("list",length=3)
+for(jj in 1:nrow(SampleData))
+{
+  
+  MDD<-GobletMD %>% filter(Patient==SampleData$Patient[jj])
+  
+  # Generate sample data.frame
+  Sample_path <- SampleData$PathSR[jj]
+  TumorCluster<-SampleData$Tumor[jj]
+  DataHD<-GenerateSampleData(Sample_path)
+  bcsHD<-DataHD$bcs
+  
+  # Read Deconvolution results and add to DF
+  DeconvolutionHD<-readRCTD(SampleData$PathDeconvolution[jj])
+  bcsHD<-AddDeconvolutionInfo(bcsHD,DeconvolutionHD,AddWeights=FALSE)
+  
+  # Filter data.frame to keep bins within tissues and are singlets (only 1 cell type)
+  bcDF <- bcsHD %>% filter(tissue==1 & DeconvolutionClass=="singlet") %>% na.omit()
+  
+  bcDF$isGoblet<-bcDF$DeconvolutionLabel1=="Goblet"
+  
+  bcDF$NewCT<-NA
+  bcDF$NewCT[match(MDD$Barcode,bcDF$barcode)]<-as.vector(MDD$FinalCluster)
+  bcDF$NewCT<-factor(bcDF$NewCT,levels = levels(GobletMD$FinalCluster))
+  
+  AllP1[[jj]]<-bcDF  %>% 
+    ggplot(aes(x = imagecol_scaled, y = -imagerow_scaled,color=NewCT)) +
+    geom_scattermore(pointsize = 3,pixels = rep(2000,2))+
+    coord_cartesian(expand = FALSE) +
+    xlab("") +
+    ylab("") +
+    theme_set(theme_bw(base_size = 10))+
+    theme_minimal() +
+    theme(axis.text = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.grid.major = element_blank())+
+    scale_color_manual(values=ColorsX,na.value = "lightgray")+
+    labs(color="Goblet Cluster")+ggtitle("")+NoLegend()
+  
+  
+}
+
+# D)
+AllP1[[1]]+AllP1[[2]]+AllP1[[3]]
+
+# Cell Cell Communication
+# Load packages
+library(liana)
+library(circlize)
+library(igraph)
+library(distances)
+
+AllResults<-vector("list",length=nrow(SampleData))
+PlotA<-vector("list",length=nrow(SampleData))
+PlotB<-vector("list",length=nrow(SampleData))
+names(AllResults)<-names(PlotA)<-names(PlotB)<-SampleData$Patient
+
+for(Patient in SampleData$Patient)
+{
+  #Generate MetaData
+  index<-which(SampleData$Patient==Patient)
+  bcDF<-GenerateSampleData(SampleData$PathSR[index])$bcs
+  Deconv<-readRCTD(SampleData$PathDeconvolution[index])
+  bcDF<-AddDeconvolutionInfo(bcDF,Deconv)
+  bcDF<-bcDF %>% filter(tissue==1)
+  
+  # Add Periphery Results
+  PeripheryBCs<-readRDS(SampleData$PathPeriphery[index])
+  
+  # Add periphery results to data.frame
+  bcDF$Periphery<-NA
+  bcDF$Periphery[bcDF$barcode%in%PeripheryBCs]<-"50 micron"
+  bcDF$Periphery[is.na(bcDF$Periphery)]<-"Tissue"
+  bcDF$Periphery[bcDF$Periphery=="Tissue" & bcDF$DeconvolutionLabel1==SampleData$Tumor[index]]<-"Tumor"
+  
+  # Create Seurat Object (8um)
+  object<-Read10X_h5(paste0(SampleData$PathSR[index],"binned_outputs/square_008um/filtered_feature_bc_matrix.h5"))
+  CommonBC<-intersect(bcDF$barcode,colnames(object))
+  object<-CreateSeuratObject(object[,CommonBC],meta.data=bcDF[match(CommonBC,bcDF$barcode),])
+  
+  # Analysis To identify Macrophage subtypes
+  
+  # Keep only barcodes labeled as Macrophage and within the TME
+  SeuratObj<-subset(object,cells=bcDF$barcode[bcDF$DeconvolutionLabel1=="Macrophage" & bcDF$Periphery=="50 micron" & bcDF$DeconvolutionClass=="singlet"])
+  
+  # Full seurat processing
+  SeuratObj<-NormalizeData(SeuratObj)
+  SeuratObj<-FindVariableFeatures(SeuratObj)
+  SeuratObj<-ScaleData(SeuratObj)
+  SeuratObj<-RunPCA(SeuratObj)
+  SeuratObj<-FindNeighbors(SeuratObj,dims=1:10)
+  SeuratObj<-FindClusters(SeuratObj,resolution=0.2)
+  
+  if(length(unique(SeuratObj$seurat_clusters))>1)
+  {
+    MkMac<-FindAllMarkers(SeuratObj,logfc.threshold = 0.1,min.diff.pct = 0.1,only.pos = T)
+    SPP1_Cluster<-as.vector(MkMac$cluster[match("SPP1",MkMac$gene)])
+    SeuratObj$Group<-ifelse(SeuratObj$seurat_clusters==SPP1_Cluster,"SPP1+","SELENOP+")
+    SeuratObj$ID<-paste0(SeuratObj$DeconvolutionLabel1,"_",SeuratObj$Group)
+  }else{
+    
+    SeuratObj$Group<-"SELENOP+"
+    SeuratObj$ID<-paste0(SeuratObj$DeconvolutionLabel1,"_",SeuratObj$Group)
+    
+  }
+  
+  
+  # Add to bcDF
+  bcDF$CellType<-bcDF$DeconvolutionLabel1
+  bcDF$CellType[match(colnames(SeuratObj),bcDF$barcode)]<-SeuratObj$ID
+  
+  # Select Closest Tumor to cells in Periphery
+  RegionI<-bcDF %>% filter(DeconvolutionClass=="singlet" & Periphery%in%c("50 micron","Tumor"))
+  dist_matrix <- distances::distances(as.matrix(RegionI[,c("imagecol","imagerow")]))
+  
+  ## Chunk to make it efficient
+  Values<-which(RegionI$Periphery=="Tumor")
+  PeriIndex<-which(RegionI$Periphery=="50 micron")
+  Chnks<-split(Values, ceiling(seq_along(Values)/1000))
+  ClosestTumorSpot<-vector("list",length=length(Chnks))
+  scales <- rjson::fromJSON(file = paste0(SampleData$PathSR[index],"/binned_outputs/square_008um/spatial/scalefactors_json.json"))
+  
+  for(Idx in 1:length(Chnks))
+  {
+    print(Idx)
+    CHUNK<-Chnks[[Idx]]
+    BcChnk<-RegionI$barcode[CHUNK]
+    TmpDist<-dist_matrix[CHUNK,PeriIndex]
+    TmpDist<-(TmpDist*8)/scales$spot_diameter_fullres
+    
+    TmpDist<-TmpDist<=50
+    iix<-which(rowSums(TmpDist)>=5)
+    
+    #iix<-apply(TmpDist,1,function(X){any(X<=50)})
+    if(length(iix)>0)
+    {
+      ClosestTumorSpot[[Idx]]<-BcChnk[iix]
+    }
+    
+  }
+  
+  ClosestTumorSpot<-unique(unlist(ClosestTumorSpot))
+  
+  bcDF$Selection<-NA
+  bcDF$Selection[bcDF$Periphery=="50 micron"]<-"50 micron"
+  bcDF$Selection[bcDF$barcode%in%ClosestTumorSpot]<-"Tumor"
+  
+  # Recreate Seurat Object 
+  object<-Read10X_h5(paste0(SampleData$PathSR[index],"binned_outputs/square_008um/filtered_feature_bc_matrix.h5"))
+  CommonBC<-intersect(bcDF$barcode,colnames(object))
+  object<-CreateSeuratObject(object[,CommonBC],meta.data=bcDF[match(CommonBC,bcDF$barcode),])
+  object<-subset(object, subset = Selection %in% c("Tumor","50 micron") & DeconvolutionClass=="singlet")
+  object <- NormalizeData(object)
+  object<-SetIdent(object,value = "CellType")
+  
+  # Run C-C using Liana
+  liana_result <- liana_wrap(object)%>% liana_aggregate()%>% filter(aggregate_rank <= 0.01)
+  liana_result$Patient<-Patient
+  AllResults[[Patient]]<-liana_result
+  
+  CTxs<-c("Macrophage_SPP1+","Macrophage_SELENOP+","CD4 T cell","CD8 T cell",SampleInfo$Tumor[SampleInfo$Sample==Patient])
+  
+  # Interaction Graph
+  PlotB[[Patient]]<-PlotInteractionGraph(liana_result,CellTypes = CTxs,
+                                         Colors = c(ColorPalette(),"Macrophage_SPP1+"="cyan2","Macrophage_SELENOP+"="orchid3"))
+}
+
+# Plot Networks
+# E)
+PlotB[[1]]
+
+
+CC_Result<-do.call(rbind,AllResults)
+
+iix<-(CC_Result$Patient==SampleInfo$Sample[1] & CC_Result$target==SampleInfo$Tumor[1]) |
+  (CC_Result$Patient==SampleInfo$Sample[2] & CC_Result$target==SampleInfo$Tumor[2]) |
+  (CC_Result$Patient==SampleInfo$Sample[3] & CC_Result$target==SampleInfo$Tumor[3])
+
+CC_Result$target[iix]<-"Tumor"
+
+# F)
+
+CC_Result  %>%
+  liana_dotplot(source_groups = c("Macrophage_SPP1+"),
+                target_groups = c("CD8 T cell","CD4 T cell","Tumor"),ntop = 50)+
+  facet_grid(~Patient)+ggtitle("Macrophage SPP1+")
+
+
+CC_Result  %>%
+  liana_dotplot(source_groups = c("Macrophage_SELENOP+"),
+                target_groups = c("CD8 T cell","CD4 T cell","Tumor"),ntop = 50)+
+  facet_grid(~Patient)+ggtitle("Macrophage SELENOP+")
+
+
