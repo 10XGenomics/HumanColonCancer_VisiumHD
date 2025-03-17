@@ -106,16 +106,18 @@ conda activate NucleiSeg
 
 The MetaData folder contains files with the associated metadata used in the manuscript.
 
+#### Single Cell
 The `SingleCell_MetaData.csv.gz` contains the following columns:
-1. *Barcode* : cell barcode
-2. *Patient* : Patient of origin
-3. *BC* : Probe barcode to identify sample of origin
-4. *QCFilter* : Binary column denoting if a cell was kept or removed during QC
-5. *Level1* : Level 1 cell type annotation
-6. *Level2* : Level 2 cell type annotation
-7. *UMAP1* : UMAP dimension 1 coordinates
-8. *UMAP2* : UMAP dimension 2 coordinates
+1. **Barcode** : cell barcode
+2. **Patient** : Patient of origin
+3. **BC** : Probe barcode to identify sample of origin
+4. **QCFilter** : Binary column denoting if a cell was kept or removed during QC
+5. **Level1** : Level 1 cell type annotation
+6. **Level2** : Level 2 cell type annotation
+7. **UMAP1** : UMAP dimension 1 coordinates
+8. **UMAP2** : UMAP dimension 2 coordinates
 
+#### Visium HD
 The parquet files (i.e `P1CRC_Metadata.parquet`) can be opened in R using the following code:
 
 ```R
@@ -124,19 +126,18 @@ The parquet files (i.e `P1CRC_Metadata.parquet`) can be opened in R using the fo
 ```
 
 These parquet files contain the following columns:
-1. *barcode* : 8um bin barcode
-2. *tissue* : Binary column denoting if the bin is under tissue or not
-3. *X* : Spatial X coordinate
-4. *Y* : Spatial Y coordinate
-5. *DeconvolutionClass* : Deconvolution class for the bin (singlet, doublet, doublet_certain,doublet_uncertain or reject)
-6. *DeconvolutionLabel1* : Gives the first cell type predicted on the bin
-7. *DeconvolutionLabel2* : Gives the second cell type predicted on the bin (Not valid for reject or doublet_uncertain)
-8. *Periphery* : Indicates if the bin is in the 50 micron tumor periphery, in the tumor or rest of the tissue
-9. *UnsupervisedL1* : Merged unsupervised clusering annotation (Level 1)
-10. *UnsupervisedL2* : Merged unsupervised clusering annotation (Level 2)
-11. *MacrophageSubtype* : Subtype of macrophage (SELENOP+ or SPP1+) in the tumor periphery
-12. *GobletSubcluster* : Goblet subcluster used in Figure 5
-
+1. **barcode** : 8um bin barcode
+2. **tissue** : Binary column denoting if the bin is under tissue or not
+3. **X** : Spatial X coordinate
+4. **Y** : Spatial Y coordinate
+5. **DeconvolutionClass** : Deconvolution class for the bin (singlet, doublet, doublet_certain,doublet_uncertain or reject)
+6. **DeconvolutionLabel1** : Gives the first cell type predicted on the bin
+7. **DeconvolutionLabel2** : Gives the second cell type predicted on the bin (Not valid for reject or doublet_uncertain)
+8. **Periphery** : Indicates if the bin is in the 50 micron tumor periphery, in the tumor or rest of the tissue
+9. **UnsupervisedL1** : Merged unsupervised clusering annotation (Level 1)
+10. **UnsupervisedL2** : Merged unsupervised clusering annotation (Level 2)
+11. **MacrophageSubtype** : Subtype of macrophage (SELENOP+ or SPP1+) in the tumor periphery
+12. **GobletSubcluster** : Goblet subcluster used in Figure 5
 
 ## Figures
 
