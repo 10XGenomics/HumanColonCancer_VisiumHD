@@ -113,7 +113,7 @@ get_xenium_cell_cords <- function(sample_name) {
   return(fread(xenium_cell_info))
 }
 
-xenium_cell_cords <- map(.x = sample_names,  ~ get_xenium_cell_cords(.x))
+xenium_cell_cords <- map(.x = sample_names[str_detect(sample_names, "Xenium")],  ~ get_xenium_cell_cords(.x))
 names(xenium_cell_cords) <- sample_names[str_detect(sample_names, "Xenium")]
 
 
