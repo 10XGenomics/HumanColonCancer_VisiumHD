@@ -187,5 +187,5 @@ SampleData<-data.frame(Patient = "PatientCRC1", # Name of the Sample
 
 ## bioRxiv version
 Here we list the git tag and link to the preprint initially submitted to bioRxiv
-[Link to Preprint](https://www.biorxiv.org/content/10.1101/2024.06.04.597233v1)
-[Tag](https://github.com/10XGenomics/HumanColonCancer_VisiumHD/releases/tag/bioRxiv)
+- [Link to Preprint](https://www.biorxiv.org/content/10.1101/2024.06.04.597233v1)
+- [Tag](https://github.com/10XGenomics/HumanColonCancer_VisiumHD/releases/tag/bioRxiv)
