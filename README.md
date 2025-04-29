@@ -14,18 +14,18 @@ A comprehensive understanding of cellular behaviour and response to the tumor mi
 
 ## Data
 
-The full dataset used in this repository and in the manuscript can be downloaded from the following link [Dataset](https://www.10xgenomics.com/products/visium-hd-spatial-gene-expression/dataset-human-crc)
-Raw data has also been deposited at GEO under accesion number [GSE280318](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE280318)
+The full dataset used in this repository and in the manuscript can be downloaded from the following link: [Dataset](https://www.10xgenomics.com/products/visium-hd-spatial-gene-expression/dataset-human-crc)
+Raw data has also been deposited at GEO under accession number [GSE280318](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE280318)
 
 ## Repository
 
-This repository contains the scripts to replicate the findings displayed in the manuscript. It is organized into two folders *Figures* and *Methods*. The *Figures* folder has the scripts to replicate the figures in the manuscript and the files are named accordingly. The *methods* folder contains the different custom methods developed for the manuscript.
+This repository contains the scripts to replicate the findings displayed in the manuscript. It is organized into two folders, *Figures* and *Methods*. The *Figures* folder has the scripts to replicate the figures in the manuscript and the files are named accordingly. The *Methods* folder contains the different custom methods developed for the manuscript.
 
 The *Figures* files require specific outputs generated with the *Methods* scripts.
 
 ## Methods
 
-In this section with provide a description and a start guide for the different methods used and developed for the manuscript.
+In this section, we provide descriptions and a getting started guide for the different methods used and developed for the manuscript.
 
 ### AuxFunctions.R
 
@@ -36,11 +36,11 @@ R script with multiple custom R functions used in the manuscript. To load all th
 ```
 
 ### FlexSingleCell.R
-R script used to process the FLEX single cell data. It takes the outputs from [*cellranger aggr*](https://www.10xgenomics.com/support/software/cell-ranger/latest/analysis/running-pipelines/cr-3p-aggr).
+R script used to process the single cell (Flex Gene Expression) data. It takes the outputs from [*cellranger aggr*](https://www.10xgenomics.com/support/software/cell-ranger/latest/analysis/running-pipelines/cr-3p-aggr).
 
 Given the dataset's large size, we adopted the sketch-based analysis approach in Seurat<sup>1</sup> v5 [sketched-based analysis](https://satijalab.org/seurat/articles/seurat5_sketch_analysis), sampling 15% of the entire dataset (~37,000 cells) for downstream analysis. After completing the analysis on the subsampled data, we extended it to the entire single cell dataset.
 
-The script saves the full processed Seurat object and the Metadata for plotting purposes in the Figure scripts.
+The script saves the full processed Seurat object and the metadata for plotting purposes in the Figure scripts.
 
 ```R
 saveRDS(ColonCancer_Flex,file='~/Outputs/Flex/FlexSeuratV5.rds') # Full Seurat Object
@@ -49,18 +49,17 @@ saveRDS(ColonCancer_Flex@meta.data,file='~/Outputs/Flex/FlexSeuratV5_MetaData.rd
 
 ### Deconvolution.R
 
-R script used to run [spaceXR](https://github.com/dmcable/spacexr)<sup>2</sup> for deconvolution. It requires the UMI count matrix from [*cellranger aggr*](https://www.10xgenomics.com/support/software/cell-ranger/latest/analysis/running-pipelines/cr-3p-aggr) and the **MetaData** generated with the `FlexSingleCell.R`  script to generate the reference. For Visium HD the [Space Ranger](https://www.10xgenomics.com/support/software/space-ranger/latest) outs are also required.
+R script used to run [spaceXR](https://github.com/dmcable/spacexr)<sup>2</sup> for deconvolution. It requires the UMI count matrix from [*cellranger aggr*](https://www.10xgenomics.com/support/software/cell-ranger/latest/analysis/running-pipelines/cr-3p-aggr) and the **MetaData** generated with the `FlexSingleCell.R`  script to generate the reference. For Visium HD, the [Space Ranger](https://www.10xgenomics.com/support/software/space-ranger/latest) output files are also required.
 
-Due to the number of barcodes in Visium HD, we modified the source code of [spaceXR](https://github.com/dmcable/spacexr) to improve runtime. The modified version can be found in the following [Pull Request](https://github.com/dmcable/spacexr/pull/206). However, the original version can also be used to deconvolve the Visium HD data.
+Due to the number of barcodes in Visium HD, we modified the source code of [spaceXR](https://github.com/dmcable/spacexr) to improve runtime. The modified version can be found in [this pull request](https://github.com/dmcable/spacexr/pull/206). However, the original version can also be used to deconvolve the Visium HD data.
 
-In the script we use sample P1CRC as a template to run the algorithm, but it can also be used for any other sample.
+In the script, we use sample P1CRC as a template to run the algorithm, but it can also be used for any other sample.
 
 ### NucleiSegmentation.py
 
-Python script used to run nuclei segmentation on H&E images used for the tissue sections processed with Visium HD.
-To create the the conda environemnt please see [yml section](#ymlfile)
+Python script used to run nuclei segmentation on H&E images used for the tissue sections processed with Visium HD. To create the the conda environment, please see [yml section](#ymlfile).
 
-The script takes an HE image as an imput and performs nuclei segmentation on the full section using the [stardist](https://github.com/stardist/stardist)<sup>3</sup> package. The user can provide a set of coordinates to generate a crop of the image along with the corresponding masks located within that region. The user also provides the path to the outputs directory for a given bin size (i.e. 2µm) and will output a .csv file that assigns all the barcodes located within the all segmentation masks.
+The script takes an H&E image as an input and performs nuclei segmentation on the full section using the [stardist](https://github.com/stardist/stardist)<sup>3</sup> package. The user can provide a set of coordinates to generate a crop of the image along with the corresponding masks located within that region. The user also provides the path to the outputs directory for a given bin size (i.e. 2 µm) and will output a .csv file that assigns all the barcodes located within the all segmentation masks.
 
 The script can be called as follows:
 
@@ -81,11 +80,11 @@ More details on the required inputs:
 
 Outputs:
 
-- `Nuclei_Barcode_Map.csv` csv file with the Nuclei and barcode relationship for the full section
-- `labels_FullSection.pckl` Labels of the identified nuclei for the full section
+- `Nuclei_Barcode_Map.csv` csv file with the nuclei and barcode relationship for the full section.
+- `labels_FullSection.pckl` Labels of the identified nuclei for the full section.
 - `polys_FullSection.pckl` Coordinates of the identified polygons for the full section.
 - `img_rois_Stardist_Subset.zip` if coordinates are given, segmented nuclei for the selected region. Can be visualized with [QuPath](https://qupath.github.io/)<sup>4</sup>
-- `img_Stardist.tif` if coordinates are given, tif file with the selected zoom in region. Can be visualized with [QuPath](https://qupath.github.io/)<sup>4</sup>
+- `img_Stardist.tif` if coordinates are given, tif file with the selected zoom in region. Can be visualized with [QuPath](https://qupath.github.io/)<sup>4</sup>.
 
 
 ### environment_nucleisegmentation.yml <a name="ymlfile"></a>
@@ -103,11 +102,11 @@ conda activate NucleiSeg
 ```
 ## MetaData
 
-The MetaData folder contains files with the associated metadata used in the manuscript.
+The *MetaData* folder contains files with the associated metadata used in the manuscript.
 
 #### Single Cell
 The `SingleCell_MetaData.csv.gz` contains the following columns:
-1. **Barcode** : cell barcode
+1. **Barcode** : Cell barcode
 2. **Patient** : Patient of origin
 3. **BC** : Probe barcode to identify sample of origin
 4. **QCFilter** : Binary column denoting if a cell was kept or removed during QC
@@ -140,7 +139,7 @@ These parquet files contain the following columns:
 
 ## Figures
 
-The Figures folder contains all the scripts to create the figures used in the manuscript.
+The *Figures* folder contains all the scripts to create the figures used in the manuscript.
 Most of the scripts within this folder require outputs generated from the *Methods* section.
 
 The required R packages are common across the files:
@@ -167,7 +166,7 @@ library(ggeasy)
 library(arrow)
 ```
 
-The beginning of each file starts with a data.frame that can be used as a template to generate the output for the different sections. We use P1CRC as a template, but can be replaced with any other section.
+The beginning of each file starts with a `data.frame` that can be used as a template to generate the output for the different sections. We use P1CRC as a template, but can be replaced with any other section.
 
 ```R
 SampleData<-data.frame(Patient = "PatientCRC1", # Name of the Sample
