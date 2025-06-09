@@ -8,6 +8,14 @@ Michelli F. Oliveira<sup>†</sup>, Juan P. Romero<sup>†</sup>, Meii Chung<sup
 
 <sup>‡</sup> Corresponding author
 
+## Publication
+
+This manuscript is now published in [Nature Genetics](https://www.nature.com/articles/s41588-025-02193-3). Please cite this work using
+
+Oliveira, M.F.d., Romero, J.P., Chung, M. et al. High-definition spatial transcriptomic profiling of immune cell populations in colorectal cancer. Nat Genet (2025). https://doi.org/10.1038/s41588-025-02193-3
+
+or download the citation [here](https://citation-needed.springer.com/v2/references/10.1038/s41588-025-02193-3?format=refman&flavour=citation)
+
 ## Abstract
 
 A comprehensive understanding of cellular behaviour and response to the tumor microenvironment (TME) in colorectal cancer (CRC) remains elusive. Here, we introduce the high definition Visium spatial transcriptomics technology (Visium HD) and investigate formalin fixed paraffin embedded (FFPE) human CRC samples. We demonstrate the high sensitivity, single cell-scale resolution, and spatial accuracy of Visium HD, generating a highly refined whole transcriptome spatial profile of CRC samples. We identify transcriptomically distinct macrophage subpopulations in different spatial niches with potential which exert pro- and anti-tumor functions via interactions with tumor and T cells. In situ gene expression analysis validates our findings and localizes a clonally expanded T cell population close to macrophages with anti-tumor features. Our study demonstrates the power of high-resolution spatial technologies to understand cellular interactions in the TME, and paves the way for larger studies that will unravel mechanisms and biomarkers of CRC biology, improving diagnosis and disease management strategies.
